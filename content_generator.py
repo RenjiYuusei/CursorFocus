@@ -46,6 +46,23 @@ def generate_focus_content(project_path, config):
         'severe': 2.0
     })
     
+    # Add default ignored directories if not specified in config
+    ignored_directories = config.get('ignored_directories', [
+        '__pycache__',
+        'node_modules',
+        '.git',
+        'venv',
+        '.env'
+    ])
+    
+    # Add default ignored files if not specified in config
+    ignored_files = config.get('ignored_files', [
+        '*.pyc',
+        '*.pyo',
+        '*.pyd',
+        '.DS_Store'
+    ])
+    
     project_type = detect_project_type(project_path)
     project_info = get_project_description(project_path)
     
@@ -57,8 +74,9 @@ def generate_focus_content(project_path, config):
         "**Key Components:**"
     ]
     
-    # Add directory structure
-    structure = get_directory_structure(project_path, config['max_depth'])
+    # Add directory structure with default max_depth
+    max_depth = config.get('max_depth', 3)  # Default to 3 if not specified
+    structure = get_directory_structure(project_path, max_depth)
     content.extend(structure_to_tree(structure))
     
     content.extend([
@@ -81,11 +99,11 @@ def generate_focus_content(project_path, config):
     # Analyze each file
     first_file = True
     for root, _, files in os.walk(project_path):
-        if any(ignored in root.split(os.path.sep) for ignored in config['ignored_directories']):
+        if any(ignored in root.split(os.path.sep) for ignored in ignored_directories):
             continue
             
         for file in files:
-            if any(file.endswith(ignored.replace('*', '')) for ignored in config['ignored_files']):
+            if any(file.endswith(ignored.replace('*', '')) for ignored in ignored_files):
                 continue
                 
             file_path = os.path.join(root, file)
