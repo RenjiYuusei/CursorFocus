@@ -146,16 +146,24 @@ class RulesGenerator:
                                 self._analyze_js_file(content, rel_path, structure)
                             elif file_ext in ['.ts', '.tsx']:
                                 self._analyze_ts_file(content, rel_path, structure)
-                            elif file_ext == '.kt':
-                                self._analyze_kotlin_file(content, rel_path, structure)
+                            elif file_ext == '.java':
+                                self._analyze_java_file(content, rel_path, structure)
                             elif file_ext == '.php':
                                 self._analyze_php_file(content, rel_path, structure)
-                            elif file_ext == '.swift':
-                                self._analyze_swift_file(content, rel_path, structure)
-                            elif file_ext in ['.cpp', '.hpp']:
+                            elif file_ext in ['.cs', '.csx']:
+                                self._analyze_csharp_file(content, rel_path, structure)
+                            elif file_ext == '.rb':
+                                self._analyze_ruby_file(content, rel_path, structure)
+                            elif file_ext == '.go':
+                                self._analyze_go_file(content, rel_path, structure)
+                            elif file_ext in ['.cpp', '.hpp', '.cc', '.cxx', '.h++']:
                                 self._analyze_cpp_file(content, rel_path, structure)
                             elif file_ext in ['.c', '.h']:
                                 self._analyze_c_file(content, rel_path, structure)
+                            elif file_ext == '.kt':
+                                self._analyze_kotlin_file(content, rel_path, structure)
+                            elif file_ext == '.swift':
+                                self._analyze_swift_file(content, rel_path, structure)
                                     
                     except Exception as e:
                         print(f"⚠️ Error reading file {rel_path}: {e}")
@@ -739,7 +747,7 @@ Do not include technical metrics in the description."""
 
     def _analyze_java_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
         """Analyze Java file content."""
-        # Find import
+        # Find imports
         imports = re.findall(self.IMPORT_PATTERNS['java'], content)
         structure['dependencies'].update({imp: True for imp in imports})
         structure['patterns']['imports'].extend(imports)
