@@ -23,8 +23,30 @@ Join our Discord server to discuss features, ask questions: [Discord](https://di
 
 ## Requirements
 
-- The AI ​​gemini key is required for focus.py to work (most important)
 - Python 3.10+
+- Gemini API Key (required for AI-powered features)
+
+## API Key Setup
+
+Before running CursorFocus, you need to set up your Gemini API key:
+
+1. Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+
+2. Set up the environment variable:
+
+   For Windows:
+   ```bash
+   set GEMINI_API_KEY=your_api_key_here
+   ```
+
+   For Mac/Linux:
+   ```bash
+   export GEMINI_API_KEY=your_api_key_here
+   ```
+
+   To make it permanent:
+   - Windows: Add to system environment variables
+   - Mac/Linux: Add to `~/.bashrc`, `~/.zshrc`, or equivalent shell config file
 
 ## Multi-Project Support
 
@@ -78,8 +100,6 @@ CursorFocus automatically generates and maintains three key files:
    - Automatically generated based on project type
    - Customized for your project's structure
    - Updates as your project evolves
-   
-
 
 ## Setup
 
@@ -98,7 +118,6 @@ CursorFocus automatically generates and maintains three key files:
    ```bash
    python focus.py
    ```
-
 
 ## Output
 
@@ -127,4 +146,4 @@ Contributions are welcome! Please feel free to submit pull requests or create is
 
 ## License
 
-This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
