@@ -1,5 +1,3 @@
-
-
 ## All copyrights are owned by RenjiYuusei please do not steal the source code or change it without permission please respect the copyright
 
 ## CursorFocus
@@ -161,6 +159,9 @@ CursorFocus generates a `Focus.md` file in your project root with:
    - File length standards compliance
 
 ## Contributing
+<a href="https://github.com/RenjiYuusei/CursorFocus/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=RenjiYuusei/CursorFocus&max=1000" />
+</a>
 
 Contributions are welcome! Please feel free to submit pull requests or create issues for bugs and feature requests.
 
