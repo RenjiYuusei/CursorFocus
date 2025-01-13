@@ -125,12 +125,6 @@ def generate_focus_content(project_path, config):
         *[f"- {ext}: {count} files ({metrics.lines_by_type[ext]:,} lines)" 
           for ext, count in sorted(metrics.files_by_type.items())],
         "",
-        "**Code Quality Alerts:**",
-        f"- 🚨 Severe Length Issues: {metrics.alerts['severe']} files",
-        f"- ⚠️ Critical Length Issues: {metrics.alerts['critical']} files",
-        f"- 📄 Length Warnings: {metrics.alerts['warning']} files",
-        f"- 🔄 Duplicate Functions: {metrics.duplicate_functions}",
-        "",
         f"*Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}*"
     ])
     
