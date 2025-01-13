@@ -13,33 +13,45 @@ class RulesGenerator:
         'python': r'^(?:from|import)\s+([a-zA-Z0-9_\.]+)',
         'javascript': r'(?:import\s+.*?from\s+[\'"]([^\'\"]+)[\'"]|require\s*\([\'"]([^\'\"]+)[\'"]\))',
         'typescript': r'(?:import|require)\s+.*?[\'"]([^\'\"]+)[\'"]',
-        'kotlin': r'import\s+([^\n]+)',
-        'php': r'(?:require|include)(?:_once)?\s*[\'"]([^\'"]+)[\'"]',
-        'swift': r'import\s+([^\n]+)',
+        'java': r'import\s+(?:static\s+)?([a-zA-Z0-9_\.\*]+);',
+        'php': r'(?:require|include)(?:_once)?\s*[\'"]([^\'"]+)[\'"]|use\s+([a-zA-Z0-9_\\]+)',
+        'csharp': r'using\s+(?:static\s+)?([a-zA-Z0-9_\.]+);',
+        'ruby': r'require(?:_relative)?\s+[\'"]([^\'"]+)[\'"]',
+        'go': r'import\s+(?:\([^)]*\)|[\'"]([^\'\"]+)[\'"])',
         'cpp': r'#include\s*[<"]([^>"]+)[>"]',
-        'c': r'#include\s*[<"]([^>"]+)[>"]'
+        'c': r'#include\s*[<"]([^>"]+)[>"]',
+        'kotlin': r'import\s+([^\n]+)',
+        'swift': r'import\s+([^\n]+)'
     }
 
     CLASS_PATTERNS = {
         'python': r'class\s+(\w+)(?:\((.*?)\))?\s*:',
         'javascript': r'class\s+(\w+)(?:\s+extends\s+(\w+))?\s*{',
         'typescript': r'(?:class|const)\s+(\w+)(?:\s*(?:extends|implements)\s+([^{]+))?(?:\s*=\s*(?:styled|React\.memo|React\.forwardRef))?\s*[{<]',
-        'kotlin': r'(?:class|interface|object)\s+(\w+)(?:\s*:\s*([^{]+))?',
-        'php': r'class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([^{]+))?',
-        'swift': r'(?:class|struct|protocol|enum)\s+(\w+)(?:\s*:\s*([^{]+))?',
+        'java': r'(?:public\s+|private\s+|protected\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([^{]+))?',
+        'php': r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([^{]+))?',
+        'csharp': r'(?:public\s+|private\s+|protected\s+|internal\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s*:\s*([^{]+))?',
+        'ruby': r'class\s+(\w+)(?:\s*<\s*(\w+))?',
+        'go': r'type\s+(\w+)\s+struct\s*{',
         'cpp': r'(?:class|struct)\s+(\w+)(?:\s*:\s*(?:public|private|protected)\s+(\w+))?(?:\s*{)?',
-        'c': r'(?:struct|enum|union)\s+(\w+)(?:\s*{)?'
+        'c': r'(?:struct|enum|union)\s+(\w+)(?:\s*{)?',
+        'kotlin': r'(?:class|interface|object)\s+(\w+)(?:\s*:\s*([^{]+))?',
+        'swift': r'(?:class|struct|protocol|enum)\s+(\w+)(?:\s*:\s*([^{]+))?'
     }
 
     FUNCTION_PATTERNS = {
         'python': r'def\s+(\w+)\s*\((.*?)\)(?:\s*->\s*([^:]+))?\s*:',
         'javascript': r'(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))\s*\((.*?)\)',
         'typescript': r'(?:function|const)\s+(\w+)\s*(?:<[^>]+>)?\s*(?:=\s*)?(?:async\s*)?\((.*?)\)(?:\s*:\s*([^{=]+))?',
-        'kotlin': r'fun\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
-        'php': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
-        'swift': r'func\s+(\w+)\s*\((.*?)\)(?:\s*->\s*([^{]+))?',
+        'java': r'(?:public|private|protected)?\s*(?:static\s+)?(?:final\s+)?(?:<[^>]+>\s+)?(\w+)\s+(\w+)\s*\((.*?)\)',
+        'php': r'(?:public|private|protected)?\s*(?:static\s+)?function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'csharp': r'(?:public|private|protected|internal)?\s*(?:static\s+)?(?:async\s+)?(?:virtual\s+)?(?:<[^>]+>\s+)?(\w+)\s+(\w+)\s*\((.*?)\)',
+        'ruby': r'def\s+(?:self\.)?\s*(\w+)(?:\((.*?)\))?',
+        'go': r'func\s+(?:\(\w+\s+[^)]+\)\s+)?(\w+)\s*\((.*?)\)(?:\s*\([^)]*\)|[^{]+)?',
         'cpp': r'(?:virtual\s+)?(?:[\w:]+\s+)?(\w+)\s*\((.*?)\)(?:\s*(?:const|override|final|noexcept))?\s*(?:{\s*)?',
-        'c': r'(?:static\s+)?(?:[\w*]+\s+)?(\w+)\s*\((.*?)\)(?:\s*{)?'
+        'c': r'(?:static\s+)?(?:[\w*]+\s+)?(\w+)\s*\((.*?)\)(?:\s*{)?',
+        'kotlin': r'fun\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'swift': r'func\s+(\w+)\s*\((.*?)\)(?:\s*->\s*([^{]+))?'
     }
 
     METHOD_PATTERN = r'(?:async\s+)?(\w+)\s*\((.*?)\)\s*{'
@@ -722,5 +734,175 @@ Do not include technical metrics in the description."""
                 'type': 'typedef',
                 'original_type': match.group(1),
                 'new_type': match.group(2),
+                'file': rel_path
+            }) 
+
+    def _analyze_java_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Java file content."""
+        # Find imports
+        imports = re.findall(self.IMPORT_PATTERNS['java'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find classes and interfaces
+        classes = re.finditer(self.CLASS_PATTERNS['java'], content)
+        for match in classes:
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'inheritance': match.group(2) if match.group(2) else '',
+                'interfaces': match.group(3).strip() if match.group(3) else '',
+                'file': rel_path
+            })
+        
+        # Find methods
+        methods = re.finditer(self.FUNCTION_PATTERNS['java'], content)
+        for match in methods:
+            structure['patterns']['function_patterns'].append({
+                'return_type': match.group(1),
+                'name': match.group(2),
+                'parameters': match.group(3),
+                'file': rel_path
+            })
+            
+        # Find annotations
+        annotations = re.finditer(r'@(\w+)(?:\((.*?)\))?', content)
+        for match in annotations:
+            structure['patterns']['code_organization'].append({
+                'type': 'annotation',
+                'name': match.group(1),
+                'parameters': match.group(2) if match.group(2) else '',
+                'file': rel_path
+            })
+
+    def _analyze_csharp_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze C# file content."""
+        # Find using statements
+        imports = re.findall(self.IMPORT_PATTERNS['csharp'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find classes and interfaces
+        classes = re.finditer(self.CLASS_PATTERNS['csharp'], content)
+        for match in classes:
+            inheritance = match.group(2)
+            if inheritance:
+                inheritance_parts = [p.strip() for p in inheritance.split(',')]
+                base_class = inheritance_parts[0] if inheritance_parts else ''
+                interfaces = inheritance_parts[1:] if len(inheritance_parts) > 1 else []
+            else:
+                base_class = ''
+                interfaces = []
+                
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'inheritance': base_class,
+                'interfaces': interfaces,
+                'file': rel_path
+            })
+        
+        # Find methods
+        methods = re.finditer(self.FUNCTION_PATTERNS['csharp'], content)
+        for match in methods:
+            structure['patterns']['function_patterns'].append({
+                'return_type': match.group(1),
+                'name': match.group(2),
+                'parameters': match.group(3),
+                'file': rel_path
+            })
+            
+        # Find properties
+        properties = re.finditer(r'(?:public|private|protected|internal)?\s*(\w+)\s+(\w+)\s*{\s*get;\s*(?:private\s*)?set;\s*}', content)
+        for match in properties:
+            structure['patterns']['code_organization'].append({
+                'type': 'property',
+                'type_name': match.group(1),
+                'name': match.group(2),
+                'file': rel_path
+            })
+
+    def _analyze_ruby_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Ruby file content."""
+        # Find requires
+        imports = re.findall(self.IMPORT_PATTERNS['ruby'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find classes and modules
+        classes = re.finditer(self.CLASS_PATTERNS['ruby'], content)
+        for match in classes:
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'inheritance': match.group(2) if match.group(2) else '',
+                'file': rel_path
+            })
+        
+        # Find methods
+        methods = re.finditer(self.FUNCTION_PATTERNS['ruby'], content)
+        for match in methods:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'parameters': match.group(2) if match.group(2) else '',
+                'file': rel_path
+            })
+            
+        # Find modules
+        modules = re.finditer(r'module\s+(\w+)', content)
+        for match in modules:
+            structure['patterns']['code_organization'].append({
+                'type': 'module',
+                'name': match.group(1),
+                'file': rel_path
+            })
+            
+        # Find mixins
+        mixins = re.finditer(r'include\s+(\w+)', content)
+        for match in mixins:
+            structure['patterns']['code_organization'].append({
+                'type': 'mixin',
+                'name': match.group(1),
+                'file': rel_path
+            })
+
+    def _analyze_go_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Go file content."""
+        # Find imports
+        imports = re.findall(self.IMPORT_PATTERNS['go'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find structs
+        structs = re.finditer(self.CLASS_PATTERNS['go'], content)
+        for match in structs:
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'type': 'struct',
+                'file': rel_path
+            })
+        
+        # Find functions and methods
+        functions = re.finditer(self.FUNCTION_PATTERNS['go'], content)
+        for match in functions:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'parameters': match.group(2),
+                'file': rel_path
+            })
+            
+        # Find interfaces
+        interfaces = re.finditer(r'type\s+(\w+)\s+interface\s*{([^}]*)}', content)
+        for match in interfaces:
+            structure['patterns']['code_organization'].append({
+                'type': 'interface',
+                'name': match.group(1),
+                'methods': match.group(2).strip(),
+                'file': rel_path
+            })
+            
+        # Find constants
+        constants = re.finditer(r'const\s+\(\s*([^)]+)\s*\)', content)
+        for match in constants:
+            structure['patterns']['code_organization'].append({
+                'type': 'const_block',
+                'constants': match.group(1).strip(),
                 'file': rel_path
             }) 
