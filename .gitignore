@@ -49,3 +49,4 @@ config.json
 .last_check_time
 .last_update_check
 .current_commit
+.github/FUNDING.yml

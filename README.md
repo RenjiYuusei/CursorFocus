@@ -54,6 +54,12 @@ Before running CursorFocus, you need to set up your Gemini API key:
    - Windows: Add to system environment variables
    - Mac/Linux: Add to `~/.bashrc`, `~/.zshrc`, or equivalent shell config file
 
+   Extra: Set manual environment variable
+   Create a file called `.env` in the root of the project and add the following:
+   ```bash
+   GEMINI_API_KEY=your_api_key_here
+   ```
+
 
 ## Multi-Project Support
 
