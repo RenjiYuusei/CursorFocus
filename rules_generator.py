@@ -739,7 +739,7 @@ Do not include technical metrics in the description."""
 
     def _analyze_java_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
         """Analyze Java file content."""
-        # Find imports
+        # Find import
         imports = re.findall(self.IMPORT_PATTERNS['java'], content)
         structure['dependencies'].update({imp: True for imp in imports})
         structure['patterns']['imports'].extend(imports)
