@@ -1,4 +1,4 @@
-## All copyrights are owned by RenjiYuusei please do not steal the source code or change it without permission please respect the copyright
+## [All rights belong to RenjiYuusei please do not steal the source code or modify the source code without the author's consent. Please respect the author](https://github.com/RenjiYuusei/CursorFocus)
 
 ## CursorFocus
 
