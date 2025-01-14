@@ -111,7 +111,7 @@ def get_default_config():
         }
     }
 
-def retry_generate_rules(project_path, project_name, max_retries=3):
+def retry_generate_rules(project_path, project_name, max_retries=5):
     """Retry generating rules file with user confirmation."""
     retries = 0
     while retries < max_retries:
@@ -213,6 +213,8 @@ def main():
     
     if update_info:
         print(f"📦 Update available: {update_info['message']}")
+        print(f"🕒 Date: {update_info['date']}")
+        print(f"👤 Author: {update_info['author']}")
         if input("Update now? (y/n): ").lower() == 'y':
             print("⏳ Downloading...")
             if updater.update(update_info):

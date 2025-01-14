@@ -217,11 +217,11 @@ Project Ecosystem:
 - IDE Configuration:
 {chr(10).join([f"- {f}" for f in project_structure['files'] if '.vscode' in f or '.idea' in f][:5])}
 - Build System:
-{chr(10).join([f"- {f}" for f in project_structure['files'] if f in ['setup.py', 'requirements.txt', 'package.json', 'Makefile']])}
+{chr(10).join([f"- {f}" for f in project_structure['files'] if f in ['setup.py', 'requirements.txt', 'package.json', 'Makefile', 'composer.json', 'Gemfile', 'go.mod', 'CMakeLists.txt', 'build.gradle', 'pom.xml', 'webpack.config.js']])}
 
 2. Project Components:
 - Core Modules:
-{chr(10).join([f"- {f}: {sum(1 for p in project_structure['patterns']['function_patterns'] if p['file'] == f)} functions" for f in project_structure['files'] if f.endswith('.py') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
+{chr(10).join([f"- {f}: {sum(1 for p in project_structure['patterns']['function_patterns'] if p['file'] == f)} functions" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rb, .go') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
 - Support Modules:
 {chr(10).join([f"- {f}" for f in project_structure['files'] if any(x in f.lower() for x in ['util', 'helper', 'common', 'shared'])][:5])}
 - Templates:
@@ -229,10 +229,10 @@ Project Ecosystem:
 
 3. Module Organization Analysis:
 - Core Module Functions:
-{chr(10).join([f"- {f}: Primary module handling {f.split('_')[0].title()} functionality" for f in project_structure['files'] if f.endswith('.py') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
+{chr(10).join([f"- {f}: Primary module handling {f.split('_')[0].title()} functionality" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rb, .go') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
 
 - Module Dependencies:
-{chr(10).join([f"- {f} depends on: {', '.join(list(set([imp.split('.')[0] for imp in project_structure['patterns']['imports'] if imp in f])))}" for f in project_structure['files'] if f.endswith('.py')][:5])}
+{chr(10).join([f"- {f} depends on: {', '.join(list(set([imp.split('.')[0] for imp in project_structure['patterns']['imports'] if imp in f])))}" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rb, .go')][:5])}
 
 - Module Responsibilities:
 Please analyze each module's code and describe its core responsibilities based on:

@@ -1,4 +1,4 @@
 watchdog==6.0.0
 python-dotenv==1.0.1
-google-generativeai==0.8.3
+google-ai-generativelanguage==0.6.15
 requests==2.32.3
