@@ -62,9 +62,9 @@ class ProjectMetrics:
             'documentation': 0     # 0-100
         }
         self.improvement_suggestions = {
-            'critical': [],    # Các vấn đề cần xử lý ngay
-            'important': [],   # Các vấn đề quan trọng
-            'minor': []        # Các vấn đề nhỏ
+            'critical': [],
+            'important': [],
+            'minor': []    
         }
 
 def get_file_length_alert(line_count, limit, thresholds):
@@ -516,16 +516,16 @@ def analyze_code_patterns(content: str) -> Dict:
     """Analyze code patterns and design."""
     patterns = {
         'design_patterns': [],     # Các mẫu thiết kế được phát hiện
-        'anti_patterns': [],       # Các anti-pattern
-        'code_style': [],         # Vấn đề về style
-        'potential_bugs': [],     # Lỗi tiềm ẩn
-        'security_issues': [],    # Vấn đề bảo mật
-        'performance_issues': [], # Vấn đề hiệu năng
+        'anti_patterns': [],
+        'code_style': [],
+        'potential_bugs': [],
+        'security_issues': [],
+        'performance_issues': [],
     }
     
     lines = content.splitlines()
     
-    # Phát hiện mẫu thiết kế
+    # Detect design patterns
     if re.search(r'class\s+\w+\s*\(\s*\w+\s*\):', content):
         patterns['design_patterns'].append('inheritance')
     if re.search(r'@\s*(classmethod|staticmethod|property)', content):
@@ -533,7 +533,7 @@ def analyze_code_patterns(content: str) -> Dict:
     if re.search(r'def\s+__init__\s*\(\s*self\s*,\s*\**\w+\s*\):', content):
         patterns['design_patterns'].append('factory')
         
-    # Phát hiện anti-patterns
+    # Detect anti-patterns
     if re.search(r'global\s+\w+', content):
         patterns['anti_patterns'].append('global_state')
     if len(re.findall(r'except\s*:', content)) > 0:
@@ -541,25 +541,25 @@ def analyze_code_patterns(content: str) -> Dict:
     if re.search(r'while\s+True:', content):
         patterns['anti_patterns'].append('infinite_loop')
         
-    # Phân tích style
+    # Detect code style issues
     if re.search(r'\t', content):
         patterns['code_style'].append('mixed_indentation')
     if re.search(r'[^"]"[^"]+"\s+\+\s+|[^\']\'\w+\'\s+\+\s+', content):
         patterns['code_style'].append('string_concatenation')
         
-    # Phát hiện lỗi tiềm ẩn
+    # Detect potential errors
     if re.search(r'except\s+\w+\s+as\s+e\s*:\s*pass', content):
         patterns['potential_bugs'].append('swallowed_exception')
     if re.search(r'\bprint\s*\(', content):
         patterns['potential_bugs'].append('debug_print')
         
-    # Phát hiện vấn đề bảo mật
+    # Detect security issues
     if re.search(r'os\.system\s*\(|subprocess\.call\s*\(', content):
         patterns['security_issues'].append('command_injection')
     if re.search(r'eval\s*\(|exec\s*\(', content):
         patterns['security_issues'].append('code_execution')
         
-    # Phát hiện vấn đề hiệu năng
+    # Detect performance issues
     if re.search(r'\+\s*=\s*[\'"]|[\'"].+[\'"].join', content):
         patterns['performance_issues'].append('inefficient_string_concat')
     if re.search(r'for\s+.+\s+in\s+range\s*\(\s*len\s*\(', content):
