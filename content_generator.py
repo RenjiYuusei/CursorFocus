@@ -448,69 +448,287 @@ def analyze_code_quality(file_path: str, metrics: ProjectMetrics) -> None:
                 metrics.complexity_metrics['total_functions']
             )
         
-        # Calculate quality scores with improved weights and new metrics
-        maintainability = (
-            advanced_metrics['maintainability_index'] * 0.6 +
-            advanced_metrics['pattern_score'] * 0.2 +
-            (100 - advanced_metrics['halstead_metrics']['difficulty']) * 0.2
+        # Calculate quality scores with improved weights and metrics
+        maintainability = calculate_maintainability_score(
+            advanced_metrics['maintainability_index'],
+            advanced_metrics['pattern_score'],
+            advanced_metrics['halstead_metrics'],
+            len(patterns['anti_patterns'])
         )
         
-        readability = 100 - min(100, (
-            (complexity * 1.5) +
-            (detailed_metrics['max_depth'] * 4) +
-            ((1 - comment_ratio) * 20) +
-            (len(patterns['code_style']) * 10)
-        ))
-        
-        complexity_score = 100 - min(100, (
-            (complexity * 2) +
-            (detailed_metrics['cognitive_complexity'] * 1.5) +
-            (detailed_metrics['max_depth'] * 6) +
-            (len(patterns['anti_patterns']) * 10)
-        ))
-        
-        documentation = min(100, (
-            (comment_ratio * 50) +
-            (40 if detailed_metrics['comment_lines'] > 0 else 0) +
-            (10 if any('docstring' in p for p in patterns['design_patterns']) else 0)
-        ))
-        
-        reusability = (
-            advanced_metrics['pattern_score'] * 0.4 +
-            (100 - advanced_metrics['halstead_metrics']['difficulty']) * 0.3 +
-            (100 - len(patterns['anti_patterns']) * 10) * 0.3
+        readability = calculate_readability_score(
+            complexity,
+            detailed_metrics,
+            comment_ratio,
+            patterns
         )
         
-        testability = 100 - min(100, (
-            (complexity * 2) +
-            (detailed_metrics['cognitive_complexity'] * 1.5) +
-            (len(patterns['potential_bugs']) * 15) +
-            (len(patterns['security_issues']) * 10)
-        ))
+        complexity_score = calculate_complexity_score(
+            complexity,
+            detailed_metrics,
+            patterns
+        )
+        
+        documentation = calculate_documentation_score(
+            comment_ratio,
+            detailed_metrics,
+            patterns
+        )
+        
+        reusability = calculate_reusability_score(
+            advanced_metrics,
+            patterns
+        )
+        
+        testability = calculate_testability_score(
+            complexity,
+            detailed_metrics,
+            patterns
+        )
         
         # Update quality scores with weighted average
         alpha = 0.3  # Weight for new scores
-        metrics.quality_scores['maintainability'] = (
-            metrics.quality_scores['maintainability'] * (1-alpha) + maintainability * alpha
+        metrics.quality_scores['maintainability'] = update_score(
+            metrics.quality_scores['maintainability'], maintainability, alpha
         )
-        metrics.quality_scores['readability'] = (
-            metrics.quality_scores['readability'] * (1-alpha) + readability * alpha
+        metrics.quality_scores['readability'] = update_score(
+            metrics.quality_scores['readability'], readability, alpha
         )
-        metrics.quality_scores['complexity'] = (
-            metrics.quality_scores['complexity'] * (1-alpha) + complexity_score * alpha
+        metrics.quality_scores['complexity'] = update_score(
+            metrics.quality_scores['complexity'], complexity_score, alpha
         )
-        metrics.quality_scores['documentation'] = (
-            metrics.quality_scores['documentation'] * (1-alpha) + documentation * alpha
+        metrics.quality_scores['documentation'] = update_score(
+            metrics.quality_scores['documentation'], documentation, alpha
         )
-        metrics.quality_scores['reusability'] = (
-            metrics.quality_scores['reusability'] * (1-alpha) + reusability * alpha
+        metrics.quality_scores['reusability'] = update_score(
+            metrics.quality_scores['reusability'], reusability, alpha
         )
-        metrics.quality_scores['testability'] = (
-            metrics.quality_scores['testability'] * (1-alpha) + testability * alpha
+        metrics.quality_scores['testability'] = update_score(
+            metrics.quality_scores['testability'], testability, alpha
         )
         
     except Exception as e:
         logging.error(f"Error analyzing code quality for {file_path}: {e}")
+
+def calculate_maintainability_score(
+    maintainability_index: float,
+    pattern_score: float,
+    halstead_metrics: Dict,
+    anti_patterns_count: int
+) -> float:
+    """Calculate maintainability score with improved weights."""
+    # Base maintainability from index
+    base_score = maintainability_index * 0.4
+    
+    # Pattern quality impact
+    pattern_impact = pattern_score * 0.25
+    
+    # Complexity factors
+    complexity_impact = (100 - halstead_metrics['difficulty']) * 0.2
+    effort_penalty = min(15, (halstead_metrics['effort'] / 1000) * 0.1)
+    
+    # Anti-pattern impact
+    anti_pattern_penalty = min(25, anti_patterns_count * 6)
+    
+    # Volume consideration
+    volume_penalty = min(10, (halstead_metrics['volume'] / 1000) * 0.1)
+    
+    final_score = base_score + pattern_impact + complexity_impact - effort_penalty - anti_pattern_penalty - volume_penalty
+    
+    return max(0, min(100, final_score))
+
+def calculate_readability_score(
+    complexity: int,
+    detailed_metrics: Dict,
+    comment_ratio: float,
+    patterns: Dict
+) -> float:
+    """Calculate readability score with improved metrics."""
+    base_score = 100
+    
+    # Complexity impacts
+    complexity_penalty = min(25, complexity * 1.2)
+    nesting_penalty = min(15, detailed_metrics['max_depth'] * 3)
+    
+    # Comment quality
+    comment_bonus = min(25, comment_ratio * 50)
+    comment_quality = 0
+    if detailed_metrics['comment_lines'] > 0:
+        # Kiểm tra tỷ lệ comment có ý nghĩa
+        meaningful_ratio = detailed_metrics.get('meaningful_comments', 0) / detailed_metrics['comment_lines']
+        comment_quality = min(15, meaningful_ratio * 30)
+    
+    # Code style impacts
+    style_issues = patterns['code_style']
+    style_penalty = min(20, len(style_issues) * 4)
+    
+    # Variable naming
+    naming_penalty = 0
+    if 'single_letter_vars' in style_issues:
+        naming_penalty += 10
+    if 'inconsistent_naming' in style_issues:
+        naming_penalty += 8
+    
+    # Line length consideration
+    if 'long_lines' in style_issues:
+        style_penalty += min(10, style_issues.count('long_lines') * 2)
+    
+    final_score = base_score - complexity_penalty - nesting_penalty + comment_bonus + comment_quality - style_penalty - naming_penalty
+    
+    return max(0, min(100, final_score))
+
+def calculate_complexity_score(
+    complexity: int,
+    detailed_metrics: Dict,
+    patterns: Dict
+) -> float:
+    """Calculate complexity score with cognitive weight."""
+    base_score = 100
+    
+    # Core complexity metrics
+    cyclomatic_penalty = min(25, complexity * 1.8)
+    cognitive_penalty = min(25, detailed_metrics['cognitive_complexity'] * 1.2)
+    
+    # Nesting depth impact
+    nesting_penalty = min(15, detailed_metrics['max_depth'] * 5)
+    
+    # Pattern impacts
+    anti_pattern_penalty = min(15, len(patterns['anti_patterns']) * 4)
+    
+    # Control flow complexity
+    control_flow_penalty = 0
+    if 'nested_conditionals' in patterns['anti_patterns']:
+        control_flow_penalty += 10
+    if 'complex_expressions' in patterns['code_style']:
+        control_flow_penalty += 8
+        
+    # Function complexity
+    function_penalty = 0
+    if detailed_metrics.get('max_function_complexity', 0) > 10:
+        function_penalty = min(10, (detailed_metrics['max_function_complexity'] - 10) * 2)
+    
+    final_score = base_score - cyclomatic_penalty - cognitive_penalty - nesting_penalty - anti_pattern_penalty - control_flow_penalty - function_penalty
+    
+    return max(0, min(100, final_score))
+
+def calculate_documentation_score(
+    comment_ratio: float,
+    detailed_metrics: Dict,
+    patterns: Dict
+) -> float:
+    """Calculate documentation score with quality metrics."""
+    base_score = 0
+    
+    # Comment coverage and quality
+    comment_score = min(40, comment_ratio * 80)
+    
+    # Documentation completeness
+    has_docstrings = 'docstring' in str(patterns['design_patterns'])
+    docstring_score = 0
+    if has_docstrings:
+        docstring_quality = detailed_metrics.get('docstring_quality', 0)
+        docstring_score = min(25, 15 + docstring_quality * 10)
+    
+    # API documentation
+    api_doc_score = 0
+    if detailed_metrics.get('has_api_docs', False):
+        api_doc_score = 15
+    
+    # Comment quality metrics
+    comment_quality = 0
+    if detailed_metrics['comment_lines'] > 0:
+        # Meaningful comments ratio
+        meaningful_ratio = detailed_metrics.get('meaningful_comments', 0) / detailed_metrics['comment_lines']
+        comment_quality = min(20, meaningful_ratio * 40)
+        
+        # Inline documentation
+        if detailed_metrics.get('has_inline_docs', False):
+            comment_quality += 5
+    
+    # Documentation maintenance
+    outdated_docs_penalty = 0
+    if 'outdated_docs' in patterns.get('documentation_issues', []):
+        outdated_docs_penalty = 15
+    
+    final_score = base_score + comment_score + docstring_score + api_doc_score + comment_quality - outdated_docs_penalty
+    
+    return min(100, final_score)
+
+def calculate_reusability_score(
+    advanced_metrics: Dict,
+    patterns: Dict
+) -> float:
+    """Calculate reusability score with pattern analysis."""
+    base_score = advanced_metrics['pattern_score'] * 0.35
+    
+    # Design pattern implementation
+    pattern_bonus = min(25, len(patterns['design_patterns']) * 8)
+    
+    # Code organization
+    organization_score = 0
+    if 'modular_design' in patterns['design_patterns']:
+        organization_score += 15
+    if 'interface_segregation' in patterns['design_patterns']:
+        organization_score += 10
+    
+    # Complexity impact
+    complexity_impact = (100 - advanced_metrics['halstead_metrics']['difficulty']) * 0.25
+    
+    # Dependency management
+    dependency_penalty = 0
+    if 'high_coupling' in patterns['anti_patterns']:
+        dependency_penalty += 15
+    if 'circular_dependency' in patterns['anti_patterns']:
+        dependency_penalty += 20
+    
+    # Code duplication
+    duplication_penalty = min(20, patterns.get('duplicate_code_percentage', 0) * 2)
+    
+    final_score = base_score + pattern_bonus + organization_score + complexity_impact - dependency_penalty - duplication_penalty
+    
+    return max(0, min(100, final_score))
+
+def calculate_testability_score(
+    complexity: int,
+    detailed_metrics: Dict,
+    patterns: Dict
+) -> float:
+    """Calculate testability score with testing considerations."""
+    base_score = 100
+    
+    # Complexity impacts
+    complexity_penalty = min(25, complexity * 1.5)
+    cognitive_penalty = min(20, detailed_metrics['cognitive_complexity'] * 1.2)
+    
+    # Testing infrastructure
+    test_bonus = 0
+    if detailed_metrics.get('has_unit_tests', False):
+        test_bonus += 15
+    if detailed_metrics.get('has_integration_tests', False):
+        test_bonus += 10
+    
+    # Code coverage
+    coverage_score = min(20, detailed_metrics.get('test_coverage', 0) * 0.2)
+    
+    # Pattern impacts
+    bug_penalty = min(20, len(patterns['potential_bugs']) * 8)
+    security_penalty = min(15, len(patterns['security_issues']) * 6)
+    
+    # Dependency injection
+    di_bonus = 10 if 'dependency_injection' in patterns['design_patterns'] else 0
+    
+    # Mocking difficulty
+    mock_penalty = 0
+    if 'hard_to_mock' in patterns.get('testing_issues', []):
+        mock_penalty = 15
+    
+    final_score = base_score - complexity_penalty - cognitive_penalty + test_bonus + coverage_score - bug_penalty - security_penalty + di_bonus - mock_penalty
+    
+    return max(0, min(100, final_score))
+
+def update_score(current: float, new: float, alpha: float) -> float:
+    """Update score with exponential moving average."""
+    return current * (1 - alpha) + new * alpha
 
 def analyze_code_patterns(content: str) -> Dict:
     """Analyze code patterns and design."""
@@ -528,10 +746,16 @@ def analyze_code_patterns(content: str) -> Dict:
     # Detect design patterns
     if re.search(r'class\s+\w+\s*\(\s*\w+\s*\):', content):
         patterns['design_patterns'].append('inheritance')
-    if re.search(r'@\s*(classmethod|staticmethod|property)', content):
+    if re.search(r'@\s*(classmethod|staticmethod|property|abstractmethod)', content):
         patterns['design_patterns'].append('decorator')
     if re.search(r'def\s+__init__\s*\(\s*self\s*,\s*\**\w+\s*\):', content):
         patterns['design_patterns'].append('factory')
+    if re.search(r'@\s*singleton|_instance\s*=\s*None', content):
+        patterns['design_patterns'].append('singleton')
+    if re.search(r'def\s+__iter__\s*\(\s*self\s*\)|def\s+__next__\s*\(\s*self\s*\)', content):
+        patterns['design_patterns'].append('iterator')
+    if re.search(r'def\s+notify|def\s+update|def\s+subscribe|def\s+unsubscribe', content):
+        patterns['design_patterns'].append('observer')
         
     # Detect anti-patterns
     if re.search(r'global\s+\w+', content):
@@ -540,30 +764,50 @@ def analyze_code_patterns(content: str) -> Dict:
         patterns['anti_patterns'].append('bare_except')
     if re.search(r'while\s+True:', content):
         patterns['anti_patterns'].append('infinite_loop')
+    if re.search(r'(?:if|while|for).+(?:if|while|for).+(?:if|while|for)', content):
+        patterns['anti_patterns'].append('nested_conditionals')
+    if re.search(r'print\s*\([^)]*\)\s*#.*debug', content, re.I):
+        patterns['anti_patterns'].append('debug_code')
         
     # Detect code style issues
     if re.search(r'\t', content):
         patterns['code_style'].append('mixed_indentation')
     if re.search(r'[^"]"[^"]+"\s+\+\s+|[^\']\'\w+\'\s+\+\s+', content):
         patterns['code_style'].append('string_concatenation')
+    if re.search(r'\b(i|j|k|x|y|z)\b\s*=\s*\d+', content):
+        patterns['code_style'].append('single_letter_vars')
+    if re.search(r'(?:if|while|for).{120,}:', content):
+        patterns['code_style'].append('long_lines')
         
-    # Detect potential errors
+    # Detect potential bugs
     if re.search(r'except\s+\w+\s+as\s+e\s*:\s*pass', content):
         patterns['potential_bugs'].append('swallowed_exception')
     if re.search(r'\bprint\s*\(', content):
         patterns['potential_bugs'].append('debug_print')
+    if re.search(r'(?:if|while|for).+(?:return|break|continue).+(?:else):', content):
+        patterns['potential_bugs'].append('unreachable_code')
+    if re.search(r'(?:list|dict|set)\([^)]*\)\s*==\s*(?:list|dict|set)\([^)]*\)', content):
+        patterns['potential_bugs'].append('collection_comparison')
         
     # Detect security issues
     if re.search(r'os\.system\s*\(|subprocess\.call\s*\(', content):
         patterns['security_issues'].append('command_injection')
     if re.search(r'eval\s*\(|exec\s*\(', content):
         patterns['security_issues'].append('code_execution')
+    if re.search(r'(?:password|secret|key|token)\s*=\s*["\'][^"\']+["\']', content, re.I):
+        patterns['security_issues'].append('hardcoded_secrets')
+    if re.search(r'input\s*\([^)]*\)', content):
+        patterns['security_issues'].append('unvalidated_input')
         
     # Detect performance issues
     if re.search(r'\+\s*=\s*[\'"]|[\'"].+[\'"].join', content):
         patterns['performance_issues'].append('inefficient_string_concat')
     if re.search(r'for\s+.+\s+in\s+range\s*\(\s*len\s*\(', content):
         patterns['performance_issues'].append('inefficient_loop')
+    if re.search(r'(?:list|set|dict)\((?:list|set|dict)\([^)]+\)\)', content):
+        patterns['performance_issues'].append('nested_conversions')
+    if re.search(r'\.index\(|\.count\(', content):
+        patterns['performance_issues'].append('inefficient_operations')
         
     return patterns
 
