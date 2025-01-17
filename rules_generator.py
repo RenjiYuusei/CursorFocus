@@ -135,94 +135,83 @@ class RulesGenerator:
             'languages': {},
             'config_files': [],
             'code_contents': {},
+            'directory_structure': {},  # Track directory hierarchy
+            'language_stats': {},      # Track language statistics by directory
             'patterns': {
                 'classes': [],
                 'functions': [],
                 'imports': [],
                 'error_handling': [],
                 'configurations': [],
-                'naming_patterns': {},  # Track naming conventions
-                'code_organization': [], # Track code organization patterns
-                'variable_patterns': [], # Track variable naming and usage
-                'function_patterns': [], # Track function patterns
-                'class_patterns': [],    # Track class patterns
-                'error_patterns': [],    # Track error handling patterns
-                'performance_patterns': [], # Track performance patterns
-                'suggest_patterns': [] # Track suggest patterns
+                'naming_patterns': {},
+                'code_organization': [],
+                'variable_patterns': [],
+                'function_patterns': [],
+                'class_patterns': [],
+                'error_patterns': [],
+                'performance_patterns': [],
+                'suggest_patterns': [],
+                'directory_patterns': []  # Track directory organization patterns
             }
         }
 
+        # Track directory statistics
+        dir_stats = {}
+
         # Analyze each file
-        for root, _, files in os.walk(self.project_path):
-            if any(x in root for x in ['node_modules', 'venv', '.git', '__pycache__', 'build', 'dist']):
-                continue
+        for root, dirs, files in os.walk(self.project_path):
+            # Skip ignored directories
+            dirs[:] = [d for d in dirs if not any(x in d for x in ['node_modules', 'venv', '.git', '__pycache__', 'build', 'dist'])]
+            
+            rel_root = os.path.relpath(root, self.project_path)
+            if rel_root == '.':
+                rel_root = ''
+                
+            # Initialize directory statistics
+            dir_stats[rel_root] = {
+                'total_files': 0,
+                'code_files': 0,
+                'languages': {},
+                'frameworks': set(),
+                'patterns': {
+                    'classes': 0,
+                    'functions': 0,
+                    'imports': 0
+                }
+            }
 
             for file in files:
                 file_path = os.path.join(root, file)
                 rel_path = os.path.relpath(file_path, self.project_path)
                 
+                # Update directory statistics
+                dir_stats[rel_root]['total_files'] += 1
+                
                 # Analyze code files
-                if file.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush', '.perl', '.matlab', '.groovy', '.lua')):
+                file_ext = os.path.splitext(file)[1].lower()
+                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush', '.perl', '.matlab', '.groovy', '.lua']:
                     structure['files'].append(rel_path)
+                    dir_stats[rel_root]['code_files'] += 1
+                    
+                    # Update language statistics
+                    lang = self._get_language_from_ext(file_ext)
+                    dir_stats[rel_root]['languages'][lang] = dir_stats[rel_root]['languages'].get(lang, 0) + 1
+                    structure['languages'][lang] = structure['languages'].get(lang, 0) + 1
                     
                     try:
                         with open(file_path, 'r', encoding='utf-8') as f:
                             content = f.read()
                             structure['code_contents'][rel_path] = content
                             
-                            # Common code analysis patterns
-                            file_ext = os.path.splitext(file)[1]
+                            # Analyze based on file type
+                            self._analyze_file_by_type(file_ext, content, rel_path, structure, dir_stats[rel_root])
                             
-                            # Language specific patterns
-                            if file_ext == '.py':
-                                self._analyze_python_file(content, rel_path, structure)
-                            elif file_ext == '.js':
-                                self._analyze_js_file(content, rel_path, structure)
-                            elif file_ext in ['.ts', '.tsx']:
-                                self._analyze_ts_file(content, rel_path, structure)
-                            elif file_ext == '.java':
-                                self._analyze_java_file(content, rel_path, structure)
-                            elif file_ext == '.php':
-                                self._analyze_php_file(content, rel_path, structure)
-                            elif file_ext in ['.cs', '.csx']:
-                                self._analyze_csharp_file(content, rel_path, structure)
-                            elif file_ext == '.rb':
-                                self._analyze_ruby_file(content, rel_path, structure)
-                            elif file_ext == '.go':
-                                self._analyze_go_file(content, rel_path, structure)
-                            elif file_ext in ['.cpp', '.hpp', '.cc', '.cxx', '.h++']:
-                                self._analyze_cpp_file(content, rel_path, structure)
-                            elif file_ext in ['.c', '.h']:
-                                self._analyze_c_file(content, rel_path, structure)
-                            elif file_ext == '.kt':
-                                self._analyze_kotlin_file(content, rel_path, structure)
-                            elif file_ext == '.swift':
-                                self._analyze_swift_file(content, rel_path, structure)
-                            elif file_ext == '.rs':
-                                self._analyze_rust_file(content, rel_path, structure)
-                            elif file_ext == '.scala':
-                                self._analyze_scala_file(content, rel_path, structure)
-                            elif file_ext == '.dart':
-                                self._analyze_dart_file(content, rel_path, structure)
-                            elif file_ext == '.r':
-                                self._analyze_r_file(content, rel_path, structure)
-                            elif file_ext == '.jl':
-                                self._analyze_julia_file(content, rel_path, structure)
-                            elif file_ext == '.perl':
-                                self._analyze_perl_file(content, rel_path, structure)
-                            elif file_ext == '.matlab':
-                                self._analyze_matlab_file(content, rel_path, structure)
-                            elif file_ext == '.groovy':
-                                self._analyze_groovy_file(content, rel_path, structure)
-                            elif file_ext == '.lua':
-                                self._analyze_lua_file(content, rel_path, structure)
-                                    
                     except Exception as e:
                         print(f"⚠️ Error reading file {rel_path}: {e}")
                         continue
 
-                # Classify files
-                if file.endswith(('.json', '.ini', '.conf')):
+                # Classify config files
+                elif file.endswith(('.json', '.ini', '.conf')):
                     structure['config_files'].append(rel_path)
                     try:
                         with open(file_path, 'r', encoding='utf-8') as f:
@@ -235,7 +224,138 @@ class RulesGenerator:
                         print(f"⚠️ Error reading config file {rel_path}: {e}")
                         continue
 
+            # Add directory structure information
+            if rel_root:
+                structure['directory_structure'][rel_root] = {
+                    'stats': dir_stats[rel_root],
+                    'parent': os.path.dirname(rel_root) or None
+                }
+
+        # Analyze directory patterns
+        self._analyze_directory_patterns(structure, dir_stats)
+        
         return structure
+
+    def _get_language_from_ext(self, ext: str) -> str:
+        """Get programming language from file extension."""
+        lang_map = {
+            '.py': 'Python',
+            '.js': 'JavaScript',
+            '.ts': 'TypeScript',
+            '.tsx': 'TypeScript/React',
+            '.kt': 'Kotlin',
+            '.php': 'PHP',
+            '.swift': 'Swift',
+            '.cpp': 'C++',
+            '.c': 'C',
+            '.h': 'C/C++ Header',
+            '.hpp': 'C++ Header',
+            '.cs': 'C#',
+            '.csx': 'C# Script',
+            '.rb': 'Ruby',
+            '.go': 'Go',
+            '.zig': 'Zig',
+            '.rush': 'Rush',
+            '.perl': 'Perl',
+            '.matlab': 'MATLAB',
+            '.groovy': 'Groovy',
+            '.lua': 'Lua'
+        }
+        return lang_map.get(ext, 'Unknown')
+
+    def _analyze_file_by_type(self, file_ext: str, content: str, rel_path: str, structure: Dict[str, Any], dir_stats: Dict[str, Any]):
+        """Analyze file based on its type and update both structure and directory statistics."""
+        # Language specific analysis
+        if file_ext == '.py':
+            self._analyze_python_file(content, rel_path, structure)
+        elif file_ext == '.js':
+            self._analyze_js_file(content, rel_path, structure)
+        elif file_ext in ['.ts', '.tsx']:
+            self._analyze_ts_file(content, rel_path, structure)
+        elif file_ext == '.java':
+            self._analyze_java_file(content, rel_path, structure)
+        elif file_ext == '.php':
+            self._analyze_php_file(content, rel_path, structure)
+        elif file_ext in ['.cs', '.csx']:
+            self._analyze_csharp_file(content, rel_path, structure)
+        elif file_ext == '.rb':
+            self._analyze_ruby_file(content, rel_path, structure)
+        elif file_ext == '.go':
+            self._analyze_go_file(content, rel_path, structure)
+        elif file_ext in ['.cpp', '.hpp', '.cc', '.cxx', '.h++']:
+            self._analyze_cpp_file(content, rel_path, structure)
+        elif file_ext in ['.c', '.h']:
+            self._analyze_c_file(content, rel_path, structure)
+        elif file_ext == '.kt':
+            self._analyze_kotlin_file(content, rel_path, structure)
+        elif file_ext == '.swift':
+            self._analyze_swift_file(content, rel_path, structure)
+        elif file_ext == '.rs':
+            self._analyze_rust_file(content, rel_path, structure)
+        elif file_ext == '.scala':
+            self._analyze_scala_file(content, rel_path, structure)
+        elif file_ext == '.dart':
+            self._analyze_dart_file(content, rel_path, structure)
+        elif file_ext == '.r':
+            self._analyze_r_file(content, rel_path, structure)
+        elif file_ext == '.jl':
+            self._analyze_julia_file(content, rel_path, structure)
+        elif file_ext == '.perl':
+            self._analyze_perl_file(content, rel_path, structure)
+        elif file_ext == '.matlab':
+            self._analyze_matlab_file(content, rel_path, structure)
+        elif file_ext == '.groovy':
+            self._analyze_groovy_file(content, rel_path, structure)
+        elif file_ext == '.lua':
+            self._analyze_lua_file(content, rel_path, structure)
+
+        # Update directory statistics
+        dir_stats['patterns']['classes'] += len([p for p in structure['patterns']['class_patterns'] if p['file'] == rel_path])
+        dir_stats['patterns']['functions'] += len([p for p in structure['patterns']['function_patterns'] if p['file'] == rel_path])
+        dir_stats['patterns']['imports'] += len([imp for imp in structure['patterns']['imports'] if imp in rel_path])
+
+    def _analyze_directory_patterns(self, structure: Dict[str, Any], dir_stats: Dict[str, Any]):
+        """Analyze directory organization patterns."""
+        for dir_path, stats in dir_stats.items():
+            if not dir_path:  # Skip root directory
+                continue
+                
+            # Analyze directory naming convention
+            dir_name = os.path.basename(dir_path)
+            if dir_name.islower():
+                pattern = 'lowercase'
+            elif dir_name.isupper():
+                pattern = 'uppercase'
+            elif '_' in dir_name:
+                pattern = 'snake_case'
+            elif '-' in dir_name:
+                pattern = 'kebab-case'
+            else:
+                pattern = 'mixed'
+                
+            # Analyze directory purpose
+            purpose = []
+            if any(x in dir_name.lower() for x in ['test', 'spec', 'mock']):
+                purpose.append('testing')
+            if any(x in dir_name.lower() for x in ['util', 'helper', 'common', 'shared']):
+                purpose.append('utilities')
+            if any(x in dir_name.lower() for x in ['model', 'entity', 'domain']):
+                purpose.append('domain')
+            if any(x in dir_name.lower() for x in ['controller', 'handler', 'service']):
+                purpose.append('business_logic')
+            if any(x in dir_name.lower() for x in ['view', 'template', 'component']):
+                purpose.append('presentation')
+                
+            # Add directory pattern
+            structure['patterns']['directory_patterns'].append({
+                'path': dir_path,
+                'name_pattern': pattern,
+                'purpose': purpose,
+                'languages': stats['languages'],
+                'total_files': stats['total_files'],
+                'code_files': stats['code_files'],
+                'code_metrics': stats['patterns']
+            })
 
     def _generate_ai_rules(self, project_info: Dict[str, Any]) -> Dict[str, Any]:
         """Generate rules using Gemini AI based on project analysis."""
@@ -702,7 +822,7 @@ Do not include technical metrics in the description."""
             
             # Find classes
             classes = []
-            class_pattern = r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?)?'
+            class_pattern = r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?',
             
             for i, line in enumerate(lines, 1):
                 matches = re.finditer(class_pattern, line)
