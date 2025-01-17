@@ -147,7 +147,8 @@ class RulesGenerator:
                 'function_patterns': [], # Track function patterns
                 'class_patterns': [],    # Track class patterns
                 'error_patterns': [],    # Track error handling patterns
-                'performance_patterns': [] # Track performance patterns
+                'performance_patterns': [], # Track performance patterns
+                'suggest_patterns': [] # Track suggest patterns
             }
         }
 
@@ -332,6 +333,10 @@ Return a JSON object defining AI behavior rules:
         }},
         "performance": {{
             "prefer": [],
+            "avoid": []
+        }},
+        "suggest_patterns": {{
+            "improve": [],
             "avoid": []
         }},
         "module_organization": {{

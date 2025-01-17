@@ -157,14 +157,11 @@ def setup_cursor_focus(project_path, project_name=None):
         
         if os.path.exists(rules_file):
             print(f"\nRules file exists for {project_name or 'project'}")
-            response = input("Generate new? (y/n): ").lower()
+            response = input("Update rules? (y/n): ").lower()
             if response != 'y':
                 return
-            
-            # Remove existing rules file
-            os.remove(rules_file)
         
-        # Generate .cursorrules file with retry mechanism
+        # Generate/Update .cursorrules file with retry mechanism
         rules_file = retry_generate_rules(project_path, project_name)
 
         # Generate initial Focus.md with default config

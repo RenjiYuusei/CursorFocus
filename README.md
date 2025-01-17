@@ -111,6 +111,7 @@ CursorFocus automatically generates and maintains two key files:
    - File descriptions and metrics
    - Function documentation
 2. **.cursorrules**: Project-specific Cursor settings
+   - Support format: JSON, Markdown
    - Automatically generated based on project type
    - Customized for your project's structure
    - Updates as your project evolves
