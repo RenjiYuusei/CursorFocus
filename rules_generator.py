@@ -28,7 +28,11 @@ class RulesGenerator:
         'scala': r'import\s+([a-zA-Z0-9_\.]+)(?:\._)?(?:\s*{[^}]*})?',
         'dart': r'import\s+[\'"]([^\'"]+)[\'"](?:\s+(?:as|show|hide)\s+[^;]+)?;',
         'r': r'(?:library|require)\s*\([\'"]([^\'"]+)[\'"]\)',
-        'julia': r'(?:using|import)\s+([a-zA-Z0-9_\.]+)(?:\s*:\s*[a-zA-Z0-9_,\s]+)?'
+        'julia': r'(?:using|import)\s+([a-zA-Z0-9_\.]+)(?:\s*:\s*[a-zA-Z0-9_,\s]+)?',
+        'perl': r'(?:use|require)\s+([a-zA-Z0-9_]+)(?:\s+([a-zA-Z0-9_]+))?',
+        'matlab': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'groovy': r'def\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'lua': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?'
     }
 
     CLASS_PATTERNS = {
@@ -50,7 +54,11 @@ class RulesGenerator:
         'scala': r'(?:class|object|trait)\s+(\w+)(?:\s*(?:extends|with)\s+([^{]+))?(?:\s*{)?',
         'dart': r'(?:class|abstract class|mixin)\s+(\w+)(?:\s+(?:extends|with|implements)\s+([^{]+))?(?:\s*{)?',
         'r': r'(?:setClass|setRefClass)\s*\([\'"](\w+)[\'"]',
-        'julia': r'(?:struct|abstract type|primitive type)\s+(\w+)(?:\s*<:\s*(\w+))?\s*(?:end)?'
+        'julia': r'(?:struct|abstract type|primitive type)\s+(\w+)(?:\s*<:\s*(\w+))?\s*(?:end)?',
+        'perl': r'(?:package|use)\s+([a-zA-Z0-9_]+)(?:\s+([a-zA-Z0-9_]+))?',
+        'matlab': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'groovy': r'def\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'lua': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?'
     }
 
     FUNCTION_PATTERNS = {
@@ -72,7 +80,11 @@ class RulesGenerator:
         'scala': r'(?:def|val|var)\s+(\w+)(?:\[.*?\])?\s*(?:\((.*?)\))?(?:\s*:\s*([^=]+))?(?:\s*=)?',
         'dart': r'(?:void\s+)?(\w+)\s*\((.*?)\)(?:\s*async\s*)?(?:\s*\{|\s*=>)',
         'r': r'(\w+)\s*<-\s*function\s*\((.*?)\)',
-        'julia': r'function\s+(\w+)\s*\((.*?)\)(?:\s*::\s*([^{]+))?\s*(?:end)?'
+        'julia': r'function\s+(\w+)\s*\((.*?)\)(?:\s*::\s*([^{]+))?\s*(?:end)?',
+        'perl': r'(?:sub|use)\s+([a-zA-Z0-9_]+)(?:\s+([a-zA-Z0-9_]+))?',
+        'matlab': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'groovy': r'def\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'lua': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?'
     }
 
     METHOD_PATTERN = r'(?:async\s+)?(\w+)\s*\((.*?)\)\s*{'
@@ -149,7 +161,7 @@ class RulesGenerator:
                 rel_path = os.path.relpath(file_path, self.project_path)
                 
                 # Analyze code files
-                if file.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush')):
+                if file.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush', '.perl', '.matlab', '.groovy', '.lua')):
                     structure['files'].append(rel_path)
                     
                     try:
@@ -195,6 +207,14 @@ class RulesGenerator:
                                 self._analyze_r_file(content, rel_path, structure)
                             elif file_ext == '.jl':
                                 self._analyze_julia_file(content, rel_path, structure)
+                            elif file_ext == '.perl':
+                                self._analyze_perl_file(content, rel_path, structure)
+                            elif file_ext == '.matlab':
+                                self._analyze_matlab_file(content, rel_path, structure)
+                            elif file_ext == '.groovy':
+                                self._analyze_groovy_file(content, rel_path, structure)
+                            elif file_ext == '.lua':
+                                self._analyze_lua_file(content, rel_path, structure)
                                     
                     except Exception as e:
                         print(f"⚠️ Error reading file {rel_path}: {e}")
@@ -1220,5 +1240,145 @@ Do not include technical metrics in the description."""
                 'type': 'macro',
                 'name': match.group(1),
                 'parameters': match.group(2),
+                'file': rel_path
+            }) 
+
+    def _analyze_perl_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Perl file content."""
+        # Find imports/libraries
+        imports = re.findall(self.IMPORT_PATTERNS['perl'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find S4 classes
+        classes = re.finditer(self.CLASS_PATTERNS['perl'], content)
+        for match in classes:
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'type': 's4_class',
+                'file': rel_path
+            })
+        
+        # Find functions
+        functions = re.finditer(self.FUNCTION_PATTERNS['perl'], content)
+        for match in functions:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'parameters': match.group(2),
+                'file': rel_path
+            })
+            
+        # Find pipes
+        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
+        for match in pipes:
+            structure['patterns']['code_organization'].append({
+                'type': 'pipe',
+                'from': match.group(1),
+                'to': match.group(2),
+                'file': rel_path
+            })
+
+    def _analyze_matlab_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze MATLAB file content."""
+        # Find imports/libraries
+        imports = re.findall(self.IMPORT_PATTERNS['matlab'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find S4 classes
+        classes = re.finditer(self.CLASS_PATTERNS['matlab'], content)
+        for match in classes:
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'type': 's4_class',
+                'file': rel_path
+            })
+        
+        # Find functions
+        functions = re.finditer(self.FUNCTION_PATTERNS['matlab'], content)
+        for match in functions:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'parameters': match.group(2),
+                'file': rel_path
+            })
+            
+        # Find pipes
+        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
+        for match in pipes:
+            structure['patterns']['code_organization'].append({
+                'type': 'pipe',
+                'from': match.group(1),
+                'to': match.group(2),
+                'file': rel_path
+            })
+
+    def _analyze_groovy_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Groovy file content."""
+        # Find imports/libraries
+        imports = re.findall(self.IMPORT_PATTERNS['groovy'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find S4 classes
+        classes = re.finditer(self.CLASS_PATTERNS['groovy'], content)
+        for match in classes:
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'type': 's4_class',
+                'file': rel_path
+            })
+        
+        # Find functions
+        functions = re.finditer(self.FUNCTION_PATTERNS['groovy'], content)
+        for match in functions:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'parameters': match.group(2),
+                'file': rel_path
+            })
+            
+        # Find pipes
+        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
+        for match in pipes:
+            structure['patterns']['code_organization'].append({
+                'type': 'pipe',
+                'from': match.group(1),
+                'to': match.group(2),
+                'file': rel_path
+            })
+
+    def _analyze_lua_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Lua file content."""
+        # Find imports/libraries
+        imports = re.findall(self.IMPORT_PATTERNS['lua'], content)
+        structure['dependencies'].update({imp: True for imp in imports})
+        structure['patterns']['imports'].extend(imports)
+        
+        # Find S4 classes
+        classes = re.finditer(self.CLASS_PATTERNS['lua'], content)
+        for match in classes:
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(1),
+                'type': 's4_class',
+                'file': rel_path
+            })
+        
+        # Find functions
+        functions = re.finditer(self.FUNCTION_PATTERNS['lua'], content)
+        for match in functions:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'parameters': match.group(2),
+                'file': rel_path
+            })
+            
+        # Find pipes
+        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
+        for match in pipes:
+            structure['patterns']['code_organization'].append({
+                'type': 'pipe',
+                'from': match.group(1),
+                'to': match.group(2),
                 'file': rel_path
             }) 
