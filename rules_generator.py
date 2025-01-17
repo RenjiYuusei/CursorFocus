@@ -14,7 +14,7 @@ class RulesGenerator:
         'javascript': r'(?:import\s+.*?from\s+[\'"]([^\'\"]+)[\'"]|require\s*\([\'"]([^\'\"]+)[\'"]\))',
         'typescript': r'(?:import|require)\s+.*?[\'"]([^\'\"]+)[\'"]',
         'java': r'import\s+(?:static\s+)?([a-zA-Z0-9_\.\*]+);',
-        'php': r'(?:require|include)(?:_once)?\s*[\'"]([^\'"]+)[\'"]|use\s+([a-zA-Z0-9_\\]+)',
+        'php': r'namespace\s+([a-zA-Z0-9_\\]+)',
         'csharp': r'using\s+(?:static\s+)?([a-zA-Z0-9_\.]+);',
         'ruby': r'require(?:_relative)?\s+[\'"]([^\'"]+)[\'"]',
         'go': r'import\s+(?:\([^)]*\)|[\'"]([^\'\"]+)[\'"])',
@@ -40,7 +40,7 @@ class RulesGenerator:
         'javascript': r'class\s+(\w+)(?:\s+extends\s+(\w+))?\s*{',
         'typescript': r'(?:class|const)\s+(\w+)(?:\s*(?:extends|implements)\s+([^{]+))?(?:\s*=\s*(?:styled|React\.memo|React\.forwardRef))?\s*[{<]',
         'java': r'(?:public\s+|private\s+|protected\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([^{]+))?',
-        'php': r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([^{]+))?',
+        'php': r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?',
         'csharp': r'(?:public\s+|private\s+|protected\s+|internal\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s*:\s*([^{]+))?',
         'ruby': r'class\s+(\w+)(?:\s*<\s*(\w+))?',
         'go': r'type\s+(\w+)\s+struct\s*{',
@@ -66,7 +66,7 @@ class RulesGenerator:
         'javascript': r'(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))\s*\((.*?)\)',
         'typescript': r'(?:function|const)\s+(\w+)\s*(?:<[^>]+>)?\s*(?:=\s*)?(?:async\s*)?\((.*?)\)(?:\s*:\s*([^{=]+))?',
         'java': r'(?:public|private|protected)?\s*(?:static\s+)?(?:final\s+)?(?:<[^>]+>\s+)?(\w+)\s+(\w+)\s*\((.*?)\)',
-        'php': r'(?:public|private|protected)?\s*(?:static\s+)?function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
+        'php': r'(?:public\s+|private\s+|protected\s+)?(?:static\s+)?function\s+(\w+)\s*\([^)]*\)',
         'csharp': r'(?:public|private|protected|internal)?\s*(?:static\s+)?(?:async\s+)?(?:virtual\s+)?(?:<[^>]+>\s+)?(\w+)\s+(\w+)\s*\((.*?)\)',
         'ruby': r'def\s+(?:self\.)?\s*(\w+)(?:\((.*?)\))?',
         'go': r'func\s+(?:\(\w+\s+[^)]+\)\s+)?(\w+)\s*\((.*?)\)(?:\s*\([^)]*\)|[^{]+)?',
@@ -604,30 +604,57 @@ Do not include technical metrics in the description."""
 
     def _analyze_php_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
         """Analyze PHP file content."""
-        # Find imports/requires
-        imports = re.findall(self.IMPORT_PATTERNS['php'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes
-        classes = re.finditer(self.CLASS_PATTERNS['php'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2) if match.group(2) else '',
-                'interfaces': match.group(3).strip() if match.group(3) else '',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['php'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
+        try:
+            # Find imports/requires/namespaces
+            imports = []
+            lines = content.split('\n')
+            
+            # Process each line for imports/namespaces
+            for line in lines:
+                matches = re.finditer(r'(?:namespace\s+([a-zA-Z0-9_\\]+))|(?:use\s+(?:\\)?([a-zA-Z0-9_\\]+)(?:\s+as\s+[a-zA-Z0-9_]+)?)', line)
+                for match in matches:
+                    import_value = next((g for g in match.groups() if g is not None), None)
+                    if import_value and import_value.strip():
+                        imports.append(import_value.strip())
+            
+            if imports:
+                structure['dependencies'].update({imp: True for imp in imports})
+                structure['patterns']['imports'].extend(imports)
+            
+            # Find classes
+            classes = []
+            class_pattern = r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?'
+            
+            for i, line in enumerate(lines, 1):
+                matches = re.finditer(class_pattern, line)
+                for match in matches:
+                    class_info = {
+                        'name': match.group(1),
+                        'file': rel_path,
+                        'line': i
+                    }
+                    classes.append(class_info)
+            
+            structure['patterns']['class_patterns'].extend(classes)
+            
+            # Find functions
+            functions = []
+            function_pattern = r'(?:public\s+|private\s+|protected\s+)?(?:static\s+)?function\s+(\w+)\s*\([^)]*\)'
+            
+            for i, line in enumerate(lines, 1):
+                matches = re.finditer(function_pattern, line)
+                for match in matches:
+                    func_info = {
+                        'name': match.group(1),
+                        'file': rel_path,
+                        'line': i
+                    }
+                    functions.append(func_info)
+            
+            structure['patterns']['function_patterns'].extend(functions)
+                    
+        except Exception as e:
+            pass
 
     def _analyze_swift_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
         """Analyze Swift file content."""

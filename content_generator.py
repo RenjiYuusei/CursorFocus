@@ -811,7 +811,31 @@ def analyze_code_patterns(content: str) -> Dict:
         
     return patterns
 
-def calculate_code_metrics(content: str, patterns: Dict) -> Dict:
+def get_language_patterns(file_ext: str) -> Dict:
+    """Get language specific patterns for code analysis."""
+    patterns = {
+        '.py': {
+            'operators': r'[+\-*/=<>!&|^~]|\b(if|else|for|while|break|continue|return|in|is|and|or|not)\b',
+            'operands': r'\b[A-Za-z_]\w*\b|\b\d+\b|\'[^\']*\'|"[^"]*"',
+            'control_flow': ['if', 'for', 'while', 'except', 'try', 'with'],
+            'comment': '#'
+        },
+        '.js': {
+            'operators': r'[+\-*/=<>!&|^~]|\b(if|else|for|while|break|continue|return|in|instanceof|typeof|void|delete|new|this)\b',
+            'operands': r'\b[A-Za-z_$][\w$]*\b|\b\d+\b|\'[^\']*\'|"[^"]*"|`[^`]*`',
+            'control_flow': ['if', 'for', 'while', 'try', 'catch', 'switch'],
+            'comment': '//'
+        },
+        '.ts': {
+            'operators': r'[+\-*/=<>!&|^~]|\b(if|else|for|while|break|continue|return|in|instanceof|typeof|void|delete|new|this)\b',
+            'operands': r'\b[A-Za-z_$][\w$]*\b|\b\d+\b|\'[^\']*\'|"[^"]*"|`[^`]*`',
+            'control_flow': ['if', 'for', 'while', 'try', 'catch', 'switch'],
+            'comment': '//'
+        }
+    }
+    return patterns.get(file_ext, patterns['.js'])  # Default to JS patterns if unknown
+
+def calculate_code_metrics(content: str, patterns: Dict, file_path: str = '') -> Dict:
     """Calculate advanced code metrics."""
     metrics = {
         'maintainability_index': 0,
@@ -825,35 +849,43 @@ def calculate_code_metrics(content: str, patterns: Dict) -> Dict:
         'performance_score': 0
     }
     
-    # Tính Maintainability Index
-    lines = content.splitlines()
-    loc = len([l for l in lines if l.strip() and not l.strip().startswith('#')])
-    cc = sum(1 for l in lines if any(k in l for k in ['if', 'for', 'while', 'except']))
+    # Get file extension and appropriate patterns
+    file_ext = os.path.splitext(file_path)[1].lower() if file_path else '.py'
+    lang_patterns = get_language_patterns(file_ext)
     
-    # Halstead metrics
-    operators = set(re.findall(r'[+\-*/=<>!&|^~]|\b(if|else|for|while|break|continue|return|in|is|and|or|not)\b', content))
-    operands = set(re.findall(r'\b[A-Za-z_]\w*\b|\b\d+\b|\'[^\']*\'|"[^"]*"', content))
+    # Count lines and complexity
+    lines = content.splitlines()
+    loc = len([l for l in lines if l.strip() and not l.strip().startswith(lang_patterns['comment'])])
+    cc = sum(1 for l in lines if any(k in l for k in lang_patterns['control_flow']))
+    
+    # Halstead metrics with language-specific patterns
+    operators = set(re.findall(lang_patterns['operators'], content))
+    operands = set(re.findall(lang_patterns['operands'], content))
     
     n1 = len(operators)  # Unique operators
     n2 = len(operands)   # Unique operands
-    N1 = len(re.findall(r'[+\-*/=<>!&|^~]|\b(if|else|for|while|break|continue|return|in|is|and|or|not)\b', content))  # Total operators
-    N2 = len(re.findall(r'\b[A-Za-z_]\w*\b|\b\d+\b|\'[^\']*\'|"[^"]*"', content))  # Total operands
+    N1 = len(re.findall(lang_patterns['operators'], content))  # Total operators
+    N2 = len(re.findall(lang_patterns['operands'], content))  # Total operands
     
     # Calculate Halstead metrics
     if n1 > 0 and n2 > 0:
-        volume = (N1 + N2) * math.log2(n1 + n2)
-        difficulty = (n1 / 2) * (N2 / n2)
-        effort = difficulty * volume
-        
-        metrics['halstead_metrics']['volume'] = volume
-        metrics['halstead_metrics']['difficulty'] = difficulty
-        metrics['halstead_metrics']['effort'] = effort
+        try:
+            volume = (N1 + N2) * math.log2(n1 + n2)
+            difficulty = (n1 / 2) * (N2 / n2)
+            effort = difficulty * volume
+            
+            metrics['halstead_metrics']['volume'] = volume
+            metrics['halstead_metrics']['difficulty'] = difficulty
+            metrics['halstead_metrics']['effort'] = effort
+            
+            # Calculate maintainability index
+            if loc > 0:
+                metrics['maintainability_index'] = max(0, (171 - 5.2 * math.log(volume) - 0.23 * cc - 16.2 * math.log(loc)) * 100 / 171)
+        except Exception as e:
+            logging.debug(f"Error calculating metrics for {file_path}: {str(e)}")
+            pass
     
-    # Calculate maintainability index
-    if loc > 0:
-        metrics['maintainability_index'] = max(0, (171 - 5.2 * math.log(volume) - 0.23 * cc - 16.2 * math.log(loc)) * 100 / 171)
-    
-    # Calculate pattern score
+    # Calculate pattern score with language context
     good_patterns = len(patterns['design_patterns'])
     bad_patterns = (
         len(patterns['anti_patterns']) + 
@@ -866,8 +898,19 @@ def calculate_code_metrics(content: str, patterns: Dict) -> Dict:
     security_issues = len(patterns['security_issues'])
     metrics['security_score'] = max(0, 100 - (security_issues * 25))
     
-    # Calculate performance score
+    # Calculate performance score with language-specific considerations
     perf_issues = len(patterns['performance_issues'])
+    
+    # Add language-specific performance penalties
+    if file_ext == '.js' or file_ext == '.ts':
+        if 'eval(' in content:
+            perf_issues += 2
+        if 'document.write(' in content:
+            perf_issues += 1
+    elif file_ext == '.py':
+        if 'globals()' in content or 'locals()' in content:
+            perf_issues += 1
+            
     metrics['performance_score'] = max(0, 100 - (perf_issues * 15))
     
     return metrics

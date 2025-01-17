@@ -215,13 +215,17 @@ def main():
         print(f"📦 Update available: {update_info['message']}")
         print(f"🕒 Date: {update_info['date']}")
         print(f"👤 Author: {update_info['author']}")
-        if input("Update now? (y/n): ").lower() == 'y':
-            print("⏳ Downloading...")
-            if updater.update(update_info):
-                print("✅ Updated! Please restart")
-                return
-            else:
-                print("❌ Update failed")
+        try:
+            if input("Update now? (y/n): ").lower() == 'y':
+                print("⏳ Downloading...")
+                if updater.update(update_info):
+                    print("✅ Updated! Please restart")
+                    return
+                else:
+                    print("❌ Update failed")
+        except KeyboardInterrupt:
+            print("\n👋 Update canceled")
+            pass
     else:
         print("✓ Latest version")
 
@@ -271,7 +275,7 @@ def main():
             time.sleep(1)
             
     except KeyboardInterrupt:
-        print("\n👋 Stopping")
+        print("\n👋 Bye!")
     except Exception as e:
         print(f"\n❌ Error: {e}")
 
