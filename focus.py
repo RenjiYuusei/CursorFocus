@@ -120,15 +120,29 @@ def retry_generate_rules(project_path, project_name, max_retries=5):
             analyzer = RulesAnalyzer(project_path)
             project_info = analyzer.analyze_project_for_rules()
             
+            # Ask for format preference using numbers
+            print("\nSelect format for .cursorrules file:")
+            print("1. JSON")
+            print("2. Markdown")
+            while True:
+                try:
+                    choice = int(input("Enter selection (1-2): "))
+                    if choice in [1, 2]:
+                        format_choice = 'json' if choice == 1 else 'markdown'
+                        break
+                    print("Please enter 1 or 2")
+                except ValueError:
+                    print("Please enter a number")
+            
             rules_generator = RulesGenerator(project_path)
-            rules_file = rules_generator.generate_rules_file(project_info)
+            rules_file = rules_generator.generate_rules_file(project_info, format=format_choice)
             print(f"✓ {os.path.basename(rules_file)}")
             return rules_file
         except Exception as e:
             retries += 1
             if retries < max_retries:
                 print(f"\n❌ Failed to generate rules (attempt {retries}/{max_retries}): {e}")
-                response = input("Try again? (y/n): ").lower()
+                response = input("Retry? (y/n): ").lower()
                 if response != 'y':
                     raise
             else:
@@ -138,14 +152,17 @@ def retry_generate_rules(project_path, project_name, max_retries=5):
 def setup_cursor_focus(project_path, project_name=None):
     """Set up CursorFocus for a project by generating necessary files."""
     try:
+        # Check for existing rules file
         rules_file = os.path.join(project_path, '.cursorrules')
         
-        # Check if .cursorrules exists and ask user
         if os.path.exists(rules_file):
-            print(f"\n.cursorrules exists for {project_name or 'project'}")
+            print(f"\nRules file exists for {project_name or 'project'}")
             response = input("Generate new? (y/n): ").lower()
             if response != 'y':
                 return
+            
+            # Remove existing rules file
+            os.remove(rules_file)
         
         # Generate .cursorrules file with retry mechanism
         rules_file = retry_generate_rules(project_path, project_name)

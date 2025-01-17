@@ -446,7 +446,76 @@ Do not include technical metrics in the description."""
             print(f"⚠️ Error generating project description: {e}")
             return "A software project with automated analysis and rule generation capabilities."
 
-    def generate_rules_file(self, project_info: Dict[str, Any] = None) -> str:
+    def _generate_markdown_rules(self, project_info: Dict[str, Any], ai_rules: Dict[str, Any]) -> str:
+        """Generate rules in markdown format."""
+        timestamp = self._get_timestamp()
+        description = project_info.get('description', 'A software project with automated analysis and rule generation capabilities.')
+        
+        markdown = f"""# Project Rules
+
+## Project Information
+- **Version**: {project_info.get('version', '1.0')}
+- **Last Updated**: {timestamp}
+- **Name**: {project_info.get('name', 'Unknown')}
+- **Language**: {project_info.get('language', 'unknown')}
+- **Framework**: {project_info.get('framework', 'none')}
+- **Type**: {project_info.get('type', 'application')}
+
+## Project Description
+{description}
+
+## AI Behavior Rules
+
+### Code Generation Style
+#### Preferred Patterns
+"""
+        # Add preferred code generation patterns
+        for pattern in ai_rules['ai_behavior']['code_generation']['style']['prefer']:
+            markdown += f"- {pattern}\n"
+            
+        markdown += "\n#### Patterns to Avoid\n"
+        for pattern in ai_rules['ai_behavior']['code_generation']['style']['avoid']:
+            markdown += f"- {pattern}\n"
+            
+        markdown += "\n### Error Handling\n#### Preferred Patterns\n"
+        for pattern in ai_rules['ai_behavior']['code_generation']['error_handling']['prefer']:
+            markdown += f"- {pattern}\n"
+            
+        markdown += "\n#### Patterns to Avoid\n"
+        for pattern in ai_rules['ai_behavior']['code_generation']['error_handling']['avoid']:
+            markdown += f"- {pattern}\n"
+            
+        markdown += "\n### Performance\n#### Preferred Patterns\n"
+        for pattern in ai_rules['ai_behavior']['code_generation']['performance']['prefer']:
+            markdown += f"- {pattern}\n"
+            
+        markdown += "\n#### Patterns to Avoid\n"
+        for pattern in ai_rules['ai_behavior']['code_generation']['performance']['avoid']:
+            markdown += f"- {pattern}\n"
+            
+        markdown += "\n### Module Organization\n#### Structure\n"
+        for item in ai_rules['ai_behavior']['code_generation']['module_organization']['structure']:
+            markdown += f"- {item}\n"
+            
+        markdown += "\n#### Dependencies\n"
+        for dep in ai_rules['ai_behavior']['code_generation']['module_organization']['dependencies']:
+            markdown += f"- {dep}\n"
+            
+        markdown += "\n#### Module Responsibilities\n"
+        for module, resp in ai_rules['ai_behavior']['code_generation']['module_organization']['responsibilities'].items():
+            markdown += f"- **{module}**: {resp}\n"
+            
+        markdown += "\n#### Rules\n"
+        for rule in ai_rules['ai_behavior']['code_generation']['module_organization']['rules']:
+            markdown += f"- {rule}\n"
+            
+        markdown += "\n#### Naming Conventions\n"
+        for category, convention in ai_rules['ai_behavior']['code_generation']['module_organization']['naming'].items():
+            markdown += f"- **{category}**: {convention}\n"
+            
+        return markdown
+
+    def generate_rules_file(self, project_info: Dict[str, Any] = None, format: str = 'json') -> str:
         """Generate the .cursorrules file based on project analysis and AI suggestions."""
         try:
             # Use analyzer if no project_info provided
@@ -461,22 +530,27 @@ Do not include technical metrics in the description."""
             
             # Generate project description
             description = self._generate_project_description(project_structure)
+            project_info['description'] = description
             
-            # Create rules with AI suggestions
-            rules = {
-                "version": "1.0",
-                "last_updated": self._get_timestamp(),
-                "project": {
-                    **project_info,
-                    "description": description
-                },
-                "ai_behavior": ai_rules['ai_behavior']
-            }
-            
-            # Write to file
+            # Create rules file path
             rules_file = os.path.join(self.project_path, '.cursorrules')
-            with open(rules_file, 'w', encoding='utf-8') as f:
-                json.dump(rules, f, indent=2)
+            
+            if format.lower() == 'markdown':
+                content = self._generate_markdown_rules(project_info, ai_rules)
+                with open(rules_file, 'w', encoding='utf-8') as f:
+                    f.write(content)
+            else:  # JSON format
+                rules = {
+                    "version": "1.0",
+                    "last_updated": self._get_timestamp(),
+                    "project": {
+                        **project_info,
+                        "description": description
+                    },
+                    "ai_behavior": ai_rules['ai_behavior']
+                }
+                with open(rules_file, 'w', encoding='utf-8') as f:
+                    json.dump(rules, f, indent=2)
             
             return rules_file
                 
@@ -623,7 +697,7 @@ Do not include technical metrics in the description."""
             
             # Find classes
             classes = []
-            class_pattern = r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?'
+            class_pattern = r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?)?'
             
             for i, line in enumerate(lines, 1):
                 matches = re.finditer(class_pattern, line)
