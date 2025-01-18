@@ -22,6 +22,11 @@ Join our Discord server to discuss features, ask questions: [Discord](https://di
 - 🧩 Modular and extensible design
 - 🎛️ Automatic .cursorrules generation and project adaptation
 
+## Installation
+```
+irm https://raw.githubusercontent.com/RenjiYuusei/CursorFocus/refs/heads/main/install.ps1 | iex
+```
+
 ## Requirements
 
 - Python 3.10+
@@ -116,26 +121,6 @@ CursorFocus automatically generates and maintains two key files:
    - Customized for your project's structure
    - Updates as your project evolves
 
-## Setup
-
-1. Clone or copy the CursorFocus directory to your project:
-
-   ```bash
-   git clone https://github.com/RenjiYuusei/CursorFocus.git CursorFocus
-   ```
-
-2. Install dependencies (Python 3.6+ required):
-
-   ```bash
-   cd CursorFocus
-   pip install -r requirements.txt
-   ```
-
-3. Run the script:
-   ```bash
-   python focus.py
-   ```
-
 ## Output
 
 CursorFocus generates a `Focus.md` file in your project root with:
@@ -160,10 +145,6 @@ CursorFocus generates a `Focus.md` file in your project root with:
    - File length standards compliance
 
 ## Contributing
-<a href="https://github.com/RenjiYuusei/CursorFocus/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=RenjiYuusei/CursorFocus" />
-</a>
-
 
 Contributions are welcome! Please feel free to submit pull requests or create issues for bugs and feature requests.
 
