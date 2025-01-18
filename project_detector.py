@@ -152,8 +152,8 @@ def detect_language_and_framework(project_path):
     # Language detection based on file extensions and key files
     language_indicators = {
         'python': ['.py', 'requirements.txt', 'setup.py', 'Pipfile'],
-        'javascript': ['.js', '.jsx', 'package.json'],
         'typescript': ['.ts', '.tsx', 'tsconfig.json'],
+        'javascript': ['.js', '.jsx', 'package.json'],
         'java': ['.java', 'pom.xml', 'build.gradle'],
         'php': ['.php', 'composer.json'],
         'ruby': ['.rb', 'Gemfile'],
