@@ -12,9 +12,14 @@ PROJECT_TYPES = {
         'indicators': ['setup.py', 'requirements.txt', 'Pipfile', 'pyproject.toml'],
         'required_files': []
     },
-    'node_js': {
-        'description': 'Node.js Project', 
+    'javascript': {
+        'description': 'JavaScript Project', 
         'indicators': ['package.json', 'package-lock.json', 'yarn.lock'],
+        'required_files': []
+    },
+    'typescript': {
+        'description': 'TypeScript Project',
+        'indicators': ['tsconfig.json', 'tslint.json', 'typescript.json'],
         'required_files': []
     },
     'php': {
@@ -22,14 +27,19 @@ PROJECT_TYPES = {
         'indicators': ['composer.json', 'composer.lock', 'artisan'],
         'required_files': []
     },
-    'java': {
-        'description': 'Java Project',
-        'indicators': ['pom.xml', 'build.gradle', 'gradlew'],
+    'cpp': {
+        'description': 'C++ Project',
+        'indicators': ['CMakeLists.txt', '*.cpp', '*.hpp', 'makefile', 'Makefile'],
         'required_files': []
     },
-    'dotnet': {
-        'description': '.NET Project',
-        'indicators': ['.sln', '.csproj', '.vbproj', '.fsproj'],
+    'c': {
+        'description': 'C Project',
+        'indicators': ['*.c', '*.h', 'makefile', 'Makefile'],
+        'required_files': []
+    },
+    'csharp': {
+        'description': 'C# Project',
+        'indicators': ['.sln', '.csproj', '.cs'],
         'required_files': []
     },
     'go': {
@@ -37,39 +47,49 @@ PROJECT_TYPES = {
         'indicators': ['go.mod', 'go.sum'],
         'required_files': []
     },
-    'rust': {
-        'description': 'Rust Project',
-        'indicators': ['Cargo.toml', 'Cargo.lock'],
+    'ruby': {
+        'description': 'Ruby Project',
+        'indicators': ['Gemfile', 'Rakefile', '*.rb'],
         'required_files': []
     },
-    'flutter': {
-        'description': 'Flutter Project',
-        'indicators': ['pubspec.yaml', 'pubspec.lock'],
+    'swift': {
+        'description': 'Swift Project',
+        'indicators': ['Package.swift', '*.xcodeproj', '*.xcworkspace'],
         'required_files': []
     },
-    'android': {
-        'description': 'Android Project',
-        'indicators': ['build.gradle', 'settings.gradle', 'gradlew'],
+    'kotlin': {
+        'description': 'Kotlin Project',
+        'indicators': ['*.kt', 'build.gradle.kts'],
         'required_files': []
     },
-    'ios': {
-        'description': 'iOS Project',
-        'indicators': ['*.xcodeproj', '*.xcworkspace', 'Podfile'],
+    'zig': {
+        'description': 'Zig Project',
+        'indicators': ['build.zig', 'zig.mod'],
         'required_files': []
     },
-    'web': {
-        'description': 'Web Project',
-        'indicators': ['index.html', 'webpack.config.js', 'vite.config.js'],
+    'rush': {
+        'description': 'Rush Project',
+        'indicators': ['rush.json', '.rush'],
         'required_files': []
     },
-    'docker': {
-        'description': 'Docker Project',
-        'indicators': ['Dockerfile', 'docker-compose.yml'],
+    'perl': {
+        'description': 'Perl Project',
+        'indicators': ['*.pl', '*.pm', 'cpanfile'],
         'required_files': []
     },
-    'git': {
-        'description': 'Git Repository',
-        'indicators': ['.git'],
+    'matlab': {
+        'description': 'MATLAB Project',
+        'indicators': ['*.m', '*.mat', '*.mlx'],
+        'required_files': []
+    },
+    'groovy': {
+        'description': 'Groovy Project',
+        'indicators': ['*.groovy', 'build.gradle', 'settings.gradle'],
+        'required_files': []
+    },
+    'lua': {
+        'description': 'Lua Project',
+        'indicators': ['*.lua', 'init.lua', 'main.lua', 'rockspec'],
         'required_files': []
     }
 }
@@ -152,16 +172,22 @@ def detect_language_and_framework(project_path):
     # Language detection based on file extensions and key files
     language_indicators = {
         'python': ['.py', 'requirements.txt', 'setup.py', 'Pipfile'],
-        'javascript': ['.js', '.jsx', 'package.json'],
+        'javascript': ['.js', 'package.json'],
         'typescript': ['.ts', '.tsx', 'tsconfig.json'],
-        'java': ['.java', 'pom.xml', 'build.gradle'],
+        'kotlin': ['.kt', 'build.gradle.kts'],
         'php': ['.php', 'composer.json'],
+        'swift': ['.swift', 'Package.swift'],
+        'cpp': ['.cpp', '.hpp', '.cc', '.cxx'],
+        'c': ['.c', '.h'],
+        'csharp': ['.cs', '.csproj', '.sln'],
         'ruby': ['.rb', 'Gemfile'],
         'go': ['.go', 'go.mod'],
-        'rust': ['.rs', 'Cargo.toml'],
-        'c++': ['.cpp', '.hpp', '.cc', '.cxx'],
-        'c#': ['.cs', '.csproj', '.sln'],
-        'lua': ['.lua', 'init.lua', 'main.lua', 'config.lua'],
+        'zig': ['.zig', 'build.zig'],
+        'rush': ['.rush', 'rush.json'],
+        'perl': ['.pl', '.pm', 'cpanfile'],
+        'matlab': ['.m', '.mat', '.mlx'],
+        'groovy': ['.groovy', 'build.gradle'],
+        'lua': ['.lua', 'init.lua', 'main.lua']
     }
     
     # Framework detection based on specific files/directories
@@ -170,12 +196,20 @@ def detect_language_and_framework(project_path):
         'flask': ['flask', 'Flask=='],
         'fastapi': ['fastapi'],
         'react': ['react', 'React.'],
-        'vue': ['vue.config.js', 'Vue.'],
-        'angular': ['angular.json', '@angular'],
-        'laravel': ['artisan', 'Laravel'],
-        'spring': ['spring-boot', 'SpringBoot'],
         'express': ['express'],
-        'dotnet': ['Microsoft.NET.Sdk']
+        'dotnet': ['Microsoft.NET.Sdk'],
+        'qt': ['Qt.', 'QtCore'],
+        'gtk': ['gtk', 'Gtk'],
+        'unity': ['UnityEngine'],
+        'unreal': ['UE4', 'UE5'],
+        'pytorch': ['torch', 'pytorch'],
+        'tensorflow': ['tensorflow'],
+        'rails': ['rails', 'Rails'],
+        'spring': ['spring-boot', 'SpringBoot'],
+        'laravel': ['laravel', 'Laravel'],
+        'gin': ['gin-gonic/gin'],
+        'love2d': ['love.'],
+        'corona': ['corona.']
     }
     
     # Detect language
@@ -206,6 +240,36 @@ def detect_language_and_framework(project_path):
                     continue
                     
     return detected_language, detected_framework
+
+def get_file_type_info(filename):
+    """Get file type information."""
+    ext = os.path.splitext(filename)[1].lower()
+    
+    type_map = {
+        '.py': ('Python Source', 'Python script containing project logic'),
+        '.js': ('JavaScript', 'JavaScript file for client-side functionality'),
+        '.ts': ('TypeScript', 'TypeScript source file'),
+        '.tsx': ('TypeScript/React', 'React component with TypeScript'),
+        '.kt': ('Kotlin Source', 'Kotlin implementation file'),
+        '.php': ('PHP Source', 'PHP script for server-side functionality'),
+        '.swift': ('Swift Source', 'Swift implementation file'),
+        '.cpp': ('C++ Source', 'C++ implementation file'),
+        '.hpp': ('C++ Header', 'C++ header file'),
+        '.c': ('C Source', 'C implementation file'),
+        '.h': ('C/C++ Header', 'Header file'),
+        '.cs': ('C# Source', 'C# implementation file'),
+        '.csx': ('C# Script', 'C# script file'),
+        '.rb': ('Ruby Source', 'Ruby implementation file'),
+        '.go': ('Go Source', 'Go implementation file'),
+        '.zig': ('Zig Source', 'Zig implementation file'),
+        '.rush': ('Rush Source', 'Rush implementation file'),
+        '.perl': ('Perl Source', 'Perl script file'),
+        '.matlab': ('MATLAB Source', 'MATLAB script file'),
+        '.groovy': ('Groovy Source', 'Groovy implementation file'),
+        '.lua': ('Lua Source', 'Lua script file')
+    }
+    
+    return type_map.get(ext, ('Generic', 'Project file'))
 
 def scan_for_projects(root_path, max_depth=3, ignored_dirs=None, use_cache=True):
     """Scan directory recursively for projects with caching."""
@@ -245,36 +309,6 @@ def get_project_description(project_path):
             ]
         }
         
-        if project_type == 'chrome_extension':
-            manifest_path = os.path.join(project_path, 'manifest.json')
-            if os.path.exists(manifest_path):
-                with open(manifest_path, 'r') as f:
-                    manifest_data = json.load(f)
-                    result.update({
-                        "name": manifest_data.get('name', 'Chrome Extension'),
-                        "description": manifest_data.get('description', 'No description available'),
-                        "key_features": [
-                            f"Version: {manifest_data.get('version', 'unknown')}",
-                            f"Type: {PROJECT_TYPES[project_type]['description']}",
-                            *[f"Permission: {perm}" for perm in manifest_data.get('permissions', [])[:3]]
-                        ]
-                    })
-                    
-        elif project_type == 'node_js':
-            package_path = os.path.join(project_path, 'package.json')
-            if os.path.exists(package_path):
-                with open(package_path, 'r') as f:
-                    package_data = json.load(f)
-                    result.update({
-                        "name": package_data.get('name', 'Node.js Project'),
-                        "description": package_data.get('description', 'No description available'),
-                        "key_features": [
-                            f"Version: {package_data.get('version', 'unknown')}",
-                            f"Type: {PROJECT_TYPES[project_type]['description']}",
-                            *[f"Dependency: {dep}" for dep in list(package_data.get('dependencies', {}).keys())[:3]]
-                        ]
-                    })
-        
         return result
         
     except Exception as e:
@@ -284,46 +318,6 @@ def get_project_description(project_path):
             "description": "Error reading project information",
             "key_features": ["File and directory tracking"]
         }
-
-def get_file_type_info(filename):
-    """Get file type information."""
-    ext = os.path.splitext(filename)[1].lower()
-    
-    type_map = {
-        '.py': ('Python Source', 'Python script containing project logic'),
-        '.js': ('JavaScript', 'JavaScript file for client-side functionality'),
-        '.jsx': ('React Component', 'React component file'),
-        '.ts': ('TypeScript', 'TypeScript source file'),
-        '.tsx': ('React TypeScript', 'React component with TypeScript'),
-        '.html': ('HTML', 'Web page template'),
-        '.css': ('CSS', 'Stylesheet for visual styling'),
-        '.md': ('Markdown', 'Documentation file'),
-        '.json': ('JSON', 'Configuration or data file'),
-        '.php': ('PHP Source', 'PHP script for server-side functionality'),
-        '.phtml': ('PHP Template', 'PHP template file'),
-        '.ctp': ('CakePHP Template', 'CakePHP view template'),
-        '.cpp': ('C++ Source', 'C++ implementation file'),
-        '.hpp': ('C++ Header', 'C++ header file'),
-        '.cc': ('C++ Source', 'C++ implementation file'),
-        '.cxx': ('C++ Source', 'C++ implementation file'),
-        '.c': ('C Source', 'C implementation file'),
-        '.h': ('C/C++ Header', 'Header file'),
-        '.cs': ('C# Source', 'C# implementation file'),
-        '.cshtml': ('Razor View', 'ASP.NET Core view template'),
-        '.swift': ('Swift Source', 'Swift implementation file'),
-        '.kt': ('Kotlin Source', 'Kotlin implementation file'),
-        '.kts': ('Kotlin Script', 'Kotlin build script file'),
-        '.xcodeproj': ('Xcode Project', 'iOS/macOS project configuration'),
-        '.xcworkspace': ('Xcode Workspace', 'iOS/macOS workspace configuration'),
-        '.gradle': ('Gradle Build', 'Android/Kotlin build configuration'),
-        '.podspec': ('CocoaPods Spec', 'iOS dependency specification'),
-        '.storyboard': ('iOS Storyboard', 'iOS UI layout file'),
-        '.xib': ('iOS XIB', 'iOS UI component file'),
-        '.lua': ('Lua Source', 'Lua script file implementing game logic or automation'),
-        '.rockspec': ('LuaRocks Spec', 'Lua package specification file'),
-    }
-    
-    return type_map.get(ext, ('Generic', 'Project file')) 
 
 def _do_scan(root_path, max_depth=3, ignored_dirs=None):
     """Perform a scan of the directory to find projects."""

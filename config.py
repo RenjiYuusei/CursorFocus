@@ -12,7 +12,6 @@ def load_config():
                 if config_path.endswith('.json'):
                     return json.load(f)
                 
-        
         return get_default_config()
     except Exception as e:
         print(f"Error loading config: {e}")
@@ -47,26 +46,28 @@ def get_default_config():
             ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".exe", ".bin"
         ],
         "file_length_standards": {
-            ".js": 300,
-            ".jsx": 250,
-            ".ts": 300,
-            ".tsx": 250,
-            ".py": 400,
-            ".css": 400,
-            ".scss": 400,
-            ".less": 400,
-            ".sass": 400,
-            ".html": 300,
-            ".vue": 250,
-            ".svelte": 250,
-            ".json": 100,
-            ".toml": 100,
-            ".md": 500,
-            ".rst": 500,
-            "default": 300,
-            ".swift": 400,
-            ".kt": 300,
-            ".kts": 200
+            ".py": 400,    # Python
+            ".js": 300,    # JavaScript
+            ".ts": 300,    # TypeScript
+            ".tsx": 300,   # TypeScript/React
+            ".kt": 300,    # Kotlin
+            ".php": 400,   # PHP
+            ".swift": 400, # Swift
+            ".cpp": 500,   # C++
+            ".c": 500,     # C
+            ".h": 300,     # C/C++ Header
+            ".hpp": 300,   # C++ Header
+            ".cs": 400,    # C#
+            ".csx": 400,   # C# Script
+            ".rb": 300,    # Ruby
+            ".go": 400,    # Go
+            ".zig": 300,   # Zig
+            ".rush": 300,  # Rush
+            ".perl": 400,  # Perl
+            ".matlab": 400,# MATLAB
+            ".groovy": 300,# Groovy
+            ".lua": 300,   # Lua
+            "default": 300
         }
     }
 
@@ -84,31 +85,79 @@ NON_CODE_EXTENSIONS = {
 
 # Extensions that should be analyzed for code
 CODE_EXTENSIONS = {
-    '.js', '.jsx', '.ts', '.tsx', '.py', '.java', '.cpp', '.c', '.h', 
-    '.hpp', '.cs', '.go', '.rb', '.php', '.phtml', '.ctp',
-    '.swift', '.kt', '.kts', '.lua'
+    '.py',    # Python
+    '.js',    # JavaScript
+    '.ts',    # TypeScript
+    '.tsx',   # TypeScript/React
+    '.kt',    # Kotlin
+    '.php',   # PHP
+    '.swift', # Swift
+    '.cpp',   # C++
+    '.c',     # C
+    '.h',     # C/C++ Header
+    '.hpp',   # C++ Header
+    '.cs',    # C#
+    '.csx',   # C# Script
+    '.rb',    # Ruby
+    '.go',    # Go
+    '.zig',   # Zig
+    '.rush',  # Rush
+    '.perl',  # Perl
+    '.matlab',# MATLAB
+    '.groovy',# Groovy
+    '.lua'    # Lua
 }
 
 # Regex patterns for function detection
 FUNCTION_PATTERNS = {
-    'standard': r'(?:^|\s+)(?:function\s+([a-zA-Z_]\w*)|(?:const|let|var)\s+([a-zA-Z_]\w*)\s*=\s*(?:async\s*)?function)',
-    'arrow': r'(?:^|\s+)(?:const|let|var)\s+([a-zA-Z_]\w*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[^=])\s*=>',
-    'method': r'\b([a-zA-Z_]\w*)\s*:\s*(?:async\s*)?function',
-    'class_method': r'(?:^|\s+)(?:async\s+)?([a-zA-Z_]\w*)\s*\([^)]*\)\s*{',
-    'object_property': r'([a-zA-Z_]\w*)\s*:\s*(?:\([^)]*\)|[^=])\s*=>',
+    # Python
+    'python_function': r'def\s+([a-zA-Z_]\w*)\s*\(',
+    'python_class': r'class\s+([a-zA-Z_]\w*)\s*[:\(]',
+    
+    # JavaScript/TypeScript
+    'js_function': r'(?:^|\s+)(?:function\s+([a-zA-Z_]\w*)|(?:const|let|var)\s+([a-zA-Z_]\w*)\s*=\s*(?:async\s*)?function)',
+    'js_arrow': r'(?:^|\s+)(?:const|let|var)\s+([a-zA-Z_]\w*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[^=])\s*=>',
+    'js_method': r'\b([a-zA-Z_]\w*)\s*:\s*(?:async\s*)?function',
+    'js_class_method': r'(?:^|\s+)(?:async\s+)?([a-zA-Z_]\w*)\s*\([^)]*\)\s*{',
+    
+    # PHP
     'php_function': r'(?:public\s+|private\s+|protected\s+)?function\s+([a-zA-Z_]\w*)\s*\(',
-    'php_class_method': r'(?:public\s+|private\s+|protected\s+)function\s+([a-zA-Z_]\w*)\s*\(',
+    
+    # C/C++
     'cpp_function': r'(?:virtual\s+)?(?:static\s+)?(?:inline\s+)?(?:const\s+)?(?:\w+(?:::\w+)*\s+)?([a-zA-Z_]\w*)\s*\([^)]*\)(?:\s*const)?(?:\s*noexcept)?(?:\s*override)?(?:\s*final)?(?:\s*=\s*0)?(?:\s*=\s*default)?(?:\s*=\s*delete)?(?:{|;)',
+    
+    # C#
     'csharp_method': r'(?:public|private|protected|internal|static|virtual|override|abstract|sealed|async)\s+(?:\w+(?:<[^>]+>)?)\s+([a-zA-Z_]\w*)\s*\([^)]*\)',
-    'c_function': r'(?:static\s+)?(?:inline\s+)?(?:const\s+)?(?:\w+(?:\s*\*)*\s+)?([a-zA-Z_]\w*)\s*\([^)]*\)(?:\s*{|;)',
+    
+    # Kotlin
     'kotlin_function': r'(?:fun\s+)?([a-zA-Z_]\w*)\s*(?:<[^>]+>)?\s*\([^)]*\)(?:\s*:\s*[^{]+)?\s*{',
-    'kotlin_property': r'(?:val|var)\s+([a-zA-Z_]\w*)\s*(?::\s*[^=]+)?\s*=\s*{',
+    
+    # Swift
     'swift_function': r'(?:func\s+)([a-zA-Z_]\w*)\s*(?:<[^>]+>)?\s*\([^)]*\)(?:\s*->\s*[^{]+)?\s*{',
-    'swift_property': r'(?:var|let)\s+([a-zA-Z_]\w*)\s*:\s*[^{]+\s*{\s*(?:get|set|willSet|didSet)',
+    
+    # Go
     'go_function': r'func\s+([a-zA-Z_]\w*)\s*\([^)]*\)(?:\s*\([^)]*\))?\s*{',
-    'go_method': r'func\s*\([^)]*\)\s*([a-zA-Z_]\w*)\s*\([^)]*\)(?:\s*\([^)]*\))?\s*{',
+    
+    # Ruby
+    'ruby_function': r'(?:def\s+)([a-zA-Z_]\w*[?!]?)',
+    
+    # Lua
     'lua_function': r'(?:local\s+)?function\s+([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)\s*\([^)]*\)',
-    'lua_method': r'function\s+[a-zA-Z_]\w*:([a-zA-Z_]\w*)\s*\([^)]*\)'
+    
+    # Perl
+    'perl_function': r'sub\s+([a-zA-Z_]\w*)\s*{',
+    
+    # MATLAB
+    'matlab_function': r'function\s+(?:\[?[^]]*\]?\s*=\s*)?([a-zA-Z_]\w*)\s*\(',
+    
+    # Groovy
+    'groovy_function': r'(?:def|public|private|protected)\s+([a-zA-Z_]\w*)\s*\([^)]*\)\s*{',
+    
+    # Zig
+    'zig_function': r'(?:pub\s+)?fn\s+([a-zA-Z_]\w*)\s*\(',
+    
+    # Rush
+    'rush_function': r'(?:pub\s+)?fn\s+([a-zA-Z_]\w*)\s*\('
 }
 
 # Keywords that should not be treated as function names
@@ -117,7 +166,7 @@ IGNORED_KEYWORDS = {
     'break', 'continue', 'case', 'default', 'to', 'from', 'import', 'as',
     'try', 'except', 'raise', 'with', 'async', 'await', 'yield', 'assert',
     'pass', 'del', 'print', 'in', 'is', 'not', 'and', 'or', 'lambda',
-    'global', 'nonlocal', 'class', 'def', 'n', 'lines', 'directly'
+    'global', 'nonlocal', 'class', 'def'
 }
 
 # Names of files and directories that should be ignored
