@@ -395,6 +395,10 @@ def analyze_code_quality(file_path: str, metrics: ProjectMetrics) -> None:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
+            
+        # Skip empty files
+        if not content.strip():
+            return
         
         # Analyze code patterns
         patterns = analyze_code_patterns(content)
@@ -546,34 +550,82 @@ def calculate_readability_score(
     """Calculate readability score with improved metrics."""
     base_score = 100
     
-    # Complexity impacts
-    complexity_penalty = min(25, complexity * 1.2)
-    nesting_penalty = min(15, detailed_metrics['max_depth'] * 3)
+    # Complexity impacts with adjusted weights
+    complexity_penalty = min(30, complexity * 1.5)  # Increased impact of complexity
+    nesting_penalty = min(20, detailed_metrics['max_depth'] * 4)  # Increased nesting penalty
     
-    # Comment quality
-    comment_bonus = min(25, comment_ratio * 50)
-    comment_quality = 0
+    # Enhanced comment quality metrics
+    comment_bonus = 0
     if detailed_metrics['comment_lines'] > 0:
-        # Kiểm tra tỷ lệ comment có ý nghĩa
-        meaningful_ratio = detailed_metrics.get('meaningful_comments', 0) / detailed_metrics['comment_lines']
-        comment_quality = min(15, meaningful_ratio * 30)
+        # Calculate meaningful comment ratio
+        meaningful_comments = detailed_metrics.get('meaningful_comments', 0)
+        total_comments = detailed_metrics['comment_lines']
+        meaningful_ratio = meaningful_comments / total_comments if total_comments > 0 else 0
+        
+        # Bonus for good comment coverage and quality
+        coverage_bonus = min(20, comment_ratio * 40)
+        quality_bonus = min(15, meaningful_ratio * 30)
+        comment_bonus = coverage_bonus + quality_bonus
+        
+        # Extra bonus for docstrings and API documentation
+        if detailed_metrics.get('has_docstrings', False):
+            comment_bonus += 10
+        if detailed_metrics.get('has_api_docs', False):
+            comment_bonus += 5
     
-    # Code style impacts
-    style_issues = patterns['code_style']
-    style_penalty = min(20, len(style_issues) * 4)
+    # Code style impact with more granular penalties
+    style_issues = patterns.get('code_style', [])
+    style_weights = {
+        'mixed_indentation': 12,
+        'inconsistent_naming': 10,
+        'long_lines': 8,
+        'string_concatenation': 6,
+        'single_letter_vars': 8
+    }
     
-    # Variable naming
+    style_penalty = sum(style_weights.get(issue, 5) for issue in style_issues)
+    style_penalty = min(25, style_penalty)  # Cap style penalty
+    
+    # Variable naming quality
     naming_penalty = 0
     if 'single_letter_vars' in style_issues:
-        naming_penalty += 10
+        naming_penalty += 12
     if 'inconsistent_naming' in style_issues:
+        naming_penalty += 10
+    if 'unclear_names' in style_issues:
         naming_penalty += 8
+    naming_penalty = min(20, naming_penalty)
     
-    # Line length consideration
-    if 'long_lines' in style_issues:
-        style_penalty += min(10, style_issues.count('long_lines') * 2)
+    # Code organization penalties
+    organization_penalty = 0
+    if detailed_metrics.get('avg_function_length', 0) > 30:
+        organization_penalty += 10
+    if detailed_metrics.get('max_depth', 0) > 4:
+        organization_penalty += 8
+    if 'nested_conditionals' in patterns.get('anti_patterns', []):
+        organization_penalty += 12
+    organization_penalty = min(25, organization_penalty)
     
-    final_score = base_score - complexity_penalty - nesting_penalty + comment_bonus + comment_quality - style_penalty - naming_penalty
+    # Cognitive complexity impact
+    cognitive_penalty = min(20, detailed_metrics.get('cognitive_complexity', 0) * 0.8)
+    
+    # Calculate final score with weighted components
+    final_score = (
+        base_score
+        - complexity_penalty * 0.25    # 25% weight for complexity
+        - nesting_penalty * 0.15       # 15% weight for nesting
+        + comment_bonus * 0.20         # 20% weight for comments
+        - style_penalty * 0.15         # 15% weight for style
+        - naming_penalty * 0.10        # 10% weight for naming
+        - organization_penalty * 0.10   # 10% weight for organization
+        - cognitive_penalty * 0.05      # 5% weight for cognitive complexity
+    )
+    
+    # Apply bonus for exceptional cases
+    if comment_ratio > 0.2 and meaningful_ratio > 0.8:
+        final_score += 5  # Bonus for high-quality documentation
+    if detailed_metrics.get('max_depth', 0) <= 2 and complexity < 10:
+        final_score += 5  # Bonus for simple, flat code
     
     return max(0, min(100, final_score))
 
@@ -733,17 +785,59 @@ def update_score(current: float, new: float, alpha: float) -> float:
 def analyze_code_patterns(content: str) -> Dict:
     """Analyze code patterns and design."""
     patterns = {
-        'design_patterns': [],     # Các mẫu thiết kế được phát hiện
+        'design_patterns': [],
         'anti_patterns': [],
         'code_style': [],
         'potential_bugs': [],
         'security_issues': [],
         'performance_issues': [],
+        'react_patterns': [],      # React-specific patterns
+        'react_anti_patterns': []  # React-specific anti-patterns
     }
+    
+    # Get file extension
+    file_ext = '.jsx' if '<' in content and '/>' in content else '.js'
+    lang_patterns = get_language_patterns(file_ext)
     
     lines = content.splitlines()
     
-    # Detect design patterns
+    # Detect React-specific patterns if JSX
+    if file_ext == '.jsx':
+        jsx_patterns = lang_patterns.get('jsx_patterns', {})
+        
+        # Analyze React patterns
+        if re.search(jsx_patterns['components'], content):
+            patterns['react_patterns'].append('component_based')
+        if re.search(jsx_patterns['hooks'], content):
+            patterns['react_patterns'].append('hooks_usage')
+        if re.search(jsx_patterns['state'], content):
+            patterns['react_patterns'].append('state_management')
+        if re.search(jsx_patterns['effects'], content):
+            patterns['react_patterns'].append('side_effects')
+        if re.search(jsx_patterns['memo'], content):
+            patterns['react_patterns'].append('performance_optimization')
+        if re.search(jsx_patterns['context'], content):
+            patterns['react_patterns'].append('context_usage')
+            
+        # Detect React anti-patterns
+        if re.search(r'document\.getElementById|document\.querySelector', content):
+            patterns['react_anti_patterns'].append('direct_dom_manipulation')
+        if re.search(r'this\.state\.[^=]+=|this\.setState\({[^}]+}\)', content):
+            patterns['react_anti_patterns'].append('state_mutation')
+        if re.search(r'useEffect\([^,]+\)', content):
+            patterns['react_anti_patterns'].append('missing_dependencies')
+        if re.search(r'style={{', content):
+            patterns['react_anti_patterns'].append('inline_styles')
+        if re.search(r'props\.children\.map|props\.children\.forEach', content):
+            patterns['react_anti_patterns'].append('children_manipulation')
+            
+        # Performance considerations
+        if re.search(r'bind\(this\)|function\s*\(\)\s*{\s*return', content):
+            patterns['performance_issues'].append('unnecessary_rerenders')
+        if re.search(r'useState\([^)]+\).*useState\([^)]+\)', content):
+            patterns['performance_issues'].append('excessive_state')
+    
+    # Existing pattern detection
     if re.search(r'class\s+\w+\s*\(\s*\w+\s*\):', content):
         patterns['design_patterns'].append('inheritance')
     if re.search(r'@\s*(classmethod|staticmethod|property|abstractmethod)', content):
@@ -826,6 +920,28 @@ def get_language_patterns(file_ext: str) -> Dict:
             'control_flow': ['if', 'for', 'while', 'try', 'catch', 'switch'],
             'comment': '//'
         },
+        '.jsx': {
+            'operators': r'[+\-*/=<>!&|^~]|\b(if|else|for|while|break|continue|return|in|instanceof|typeof|void|delete|new|this)\b',
+            'operands': r'\b[A-Za-z_$][\w$]*\b|\b\d+\b|\'[^\']*\'|"[^"]*"|`[^`]*`',
+            'control_flow': ['if', 'for', 'while', 'try', 'catch', 'switch', 'map', 'forEach', 'filter', 'reduce'],
+            'comment': '//',
+            'jsx_patterns': {
+                'components': r'<([A-Z][A-Za-z0-9]*)',  # React components
+                'hooks': r'use[A-Z]\w+',  # React hooks
+                'props': r'props\.[A-Za-z]\w*',  # Props usage
+                'state': r'useState|useReducer|useContext',  # State management
+                'effects': r'useEffect|useLayoutEffect',  # Side effects
+                'event_handlers': r'on[A-Z]\w+',  # Event handlers
+                'jsx_attributes': r'\b\w+={[^}]+}',  # JSX attributes
+                'conditional_rendering': r'&&|\?|:',  # Conditional rendering
+                'fragments': r'<>|<Fragment>',  # React fragments
+                'refs': r'useRef|createRef',  # React refs
+                'memo': r'useMemo|useCallback|React\.memo',  # Memoization
+                'context': r'createContext|useContext',  # Context usage
+                'portals': r'createPortal',  # React portals
+                'styled_components': r'styled\.[a-z]+`|css`'  # Styled components
+            }
+        },
         '.ts': {
             'operators': r'[+\-*/=<>!&|^~]|\b(if|else|for|while|break|continue|return|in|instanceof|typeof|void|delete|new|this)\b',
             'operands': r'\b[A-Za-z_$][\w$]*\b|\b\d+\b|\'[^\']*\'|"[^"]*"|`[^`]*`',
@@ -833,85 +949,154 @@ def get_language_patterns(file_ext: str) -> Dict:
             'comment': '//'
         }
     }
-    return patterns.get(file_ext, patterns['.js'])  # Default to JS patterns if unknown
+    
+    # Default to JS patterns if unknown, but for JSX/TSX use JSX patterns
+    if file_ext in {'.jsx', '.tsx'}:
+        return patterns['.jsx']
+    return patterns.get(file_ext, patterns['.js'])
 
 def calculate_code_metrics(content: str, patterns: Dict, file_path: str = '') -> Dict:
-    """Calculate advanced code metrics."""
+    """Calculate advanced code metrics with optimized calculations."""
     metrics = {
         'maintainability_index': 0,
         'halstead_metrics': {
             'volume': 0,
             'difficulty': 0,
-            'effort': 0
+            'effort': 0,
+            'bugs': 0,  # Estimated number of bugs
+            'time': 0   # Estimated time to program
         },
         'pattern_score': 0,
         'security_score': 0,
-        'performance_score': 0
+        'performance_score': 0,
+        'cyclomatic_density': 0,  # Cyclomatic complexity per LOC
+        'comment_quality': 0      # Quality score of comments
     }
     
     # Get file extension and appropriate patterns
     file_ext = os.path.splitext(file_path)[1].lower() if file_path else '.py'
     lang_patterns = get_language_patterns(file_ext)
     
-    # Count lines and complexity
+    # Count lines and complexity more efficiently
     lines = content.splitlines()
-    loc = len([l for l in lines if l.strip() and not l.strip().startswith(lang_patterns['comment'])])
-    cc = sum(1 for l in lines if any(k in l for k in lang_patterns['control_flow']))
+    code_lines = []
+    comment_lines = []
+    blank_lines = 0
+    cc = 0
     
-    # Halstead metrics with language-specific patterns
-    operators = set(re.findall(lang_patterns['operators'], content))
-    operands = set(re.findall(lang_patterns['operands'], content))
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            blank_lines += 1
+        elif stripped.startswith(lang_patterns['comment']):
+            comment_lines.append(stripped)
+        else:
+            code_lines.append(stripped)
+            # Calculate cyclomatic complexity
+            cc += sum(1 for k in lang_patterns['control_flow'] if k in stripped)
+    
+    loc = len(code_lines)
+    
+    # Optimize Halstead metrics calculation
+    operators = {}
+    operands = {}
+    
+    # Use single pass regex for both operators and operands
+    for line in code_lines:
+        for op in re.finditer(lang_patterns['operators'], line):
+            operators[op.group()] = operators.get(op.group(), 0) + 1
+        for opd in re.finditer(lang_patterns['operands'], line):
+            operands[opd.group()] = operands.get(opd.group(), 0) + 1
     
     n1 = len(operators)  # Unique operators
     n2 = len(operands)   # Unique operands
-    N1 = len(re.findall(lang_patterns['operators'], content))  # Total operators
-    N2 = len(re.findall(lang_patterns['operands'], content))  # Total operands
+    N1 = sum(operators.values())  # Total operators
+    N2 = sum(operands.values())  # Total operands
     
-    # Calculate Halstead metrics
+    # Calculate Halstead metrics with error handling
     if n1 > 0 and n2 > 0:
         try:
-            volume = (N1 + N2) * math.log2(n1 + n2)
-            difficulty = (n1 / 2) * (N2 / n2)
+            vocabulary = n1 + n2
+            length = N1 + N2
+            volume = length * math.log2(vocabulary) if vocabulary > 0 else 0
+            difficulty = (n1 * N2) / (2 * n2) if n2 > 0 else 0
             effort = difficulty * volume
             
-            metrics['halstead_metrics']['volume'] = volume
-            metrics['halstead_metrics']['difficulty'] = difficulty
-            metrics['halstead_metrics']['effort'] = effort
+            # Additional Halstead metrics
+            bugs = volume / 3000  # Estimated number of bugs
+            time = effort / 18    # Estimated time in seconds
             
-            # Calculate maintainability index
+            metrics['halstead_metrics'].update({
+                'volume': volume,
+                'difficulty': difficulty,
+                'effort': effort,
+                'bugs': bugs,
+                'time': time
+            })
+            
+            # Improved maintainability index calculation
             if loc > 0:
-                metrics['maintainability_index'] = max(0, (171 - 5.2 * math.log(volume) - 0.23 * cc - 16.2 * math.log(loc)) * 100 / 171)
+                # Updated formula with better weights
+                vol_ratio = math.log(volume) if volume > 0 else 0
+                metrics['maintainability_index'] = max(0, min(100, (
+                    171 - 
+                    5.2 * vol_ratio -      # Volume impact
+                    0.23 * cc -            # Complexity impact
+                    16.2 * math.log(loc) + # Size impact
+                    50 * (len(comment_lines) / (loc + 1))  # Comment ratio bonus
+                ) * 100 / 171))
+                
+                # Calculate cyclomatic density
+                metrics['cyclomatic_density'] = cc / loc if loc > 0 else 0
+                
         except Exception as e:
             logging.debug(f"Error calculating metrics for {file_path}: {str(e)}")
-            pass
     
-    # Calculate pattern score with language context
-    good_patterns = len(patterns['design_patterns'])
-    bad_patterns = (
-        len(patterns['anti_patterns']) + 
-        len(patterns['potential_bugs']) + 
-        len(patterns['code_style'])
-    )
-    metrics['pattern_score'] = max(0, 100 - (bad_patterns * 10) + (good_patterns * 5))
+    # Calculate pattern score with weighted impacts
+    pattern_weights = {
+        'design_patterns': 2.0,    # Good patterns have higher positive impact
+        'anti_patterns': -1.5,     # Anti-patterns have significant negative impact
+        'potential_bugs': -1.2,    # Potential bugs are serious but less than anti-patterns
+        'code_style': -0.8        # Style issues have lower negative impact
+    }
     
-    # Calculate security score
-    security_issues = len(patterns['security_issues'])
-    metrics['security_score'] = max(0, 100 - (security_issues * 25))
+    pattern_score = 100
+    for category, weight in pattern_weights.items():
+        count = len(patterns.get(category, []))
+        pattern_score += count * weight * 5
+    metrics['pattern_score'] = max(0, min(100, pattern_score))
     
-    # Calculate performance score with language-specific considerations
-    perf_issues = len(patterns['performance_issues'])
+    # Enhanced security score calculation
+    security_weights = {
+        'command_injection': 30,
+        'code_execution': 25,
+        'hardcoded_secrets': 20,
+        'unvalidated_input': 15
+    }
     
-    # Add language-specific performance penalties
-    if file_ext == '.js' or file_ext == '.ts':
-        if 'eval(' in content:
-            perf_issues += 2
-        if 'document.write(' in content:
-            perf_issues += 1
+    security_score = 100
+    for issue in patterns.get('security_issues', []):
+        security_score -= security_weights.get(issue, 10)
+    metrics['security_score'] = max(0, security_score)
+    
+    # Improved performance score with language-specific considerations
+    perf_issues = len(patterns.get('performance_issues', []))
+    
+    # Language-specific performance checks
+    if file_ext in {'.js', '.ts'}:
+        perf_issues += content.count('eval(') * 2
+        perf_issues += content.count('document.write(')
     elif file_ext == '.py':
-        if 'globals()' in content or 'locals()' in content:
-            perf_issues += 1
-            
-    metrics['performance_score'] = max(0, 100 - (perf_issues * 15))
+        perf_issues += (content.count('globals()') + content.count('locals()'))
+        
+    metrics['performance_score'] = max(0, 100 - (perf_issues * 12))
+    
+    # Calculate comment quality score
+    if comment_lines:
+        meaningful_comments = sum(1 for c in comment_lines if len(c) > 10 and not any(
+            c.strip(lang_patterns['comment']).startswith(x) for x in ['TODO', 'FIXME', 'XXX']
+        ))
+        metrics['comment_quality'] = (meaningful_comments / len(comment_lines)) * 100
     
     return metrics
 
