@@ -6,161 +6,306 @@ import time
 
 # Load project types from config at module level
 _config = load_config()
+
+# Project type definitions with improved structure
 PROJECT_TYPES = {
     'python': {
         'description': 'Python Project',
-        'indicators': ['setup.py', 'requirements.txt', 'Pipfile', 'pyproject.toml'],
-        'required_files': []
+        'indicators': ['setup.py', 'requirements.txt', 'Pipfile', 'pyproject.toml', 'poetry.lock', 'venv/', '.venv/'],
+        'file_patterns': ['*.py'],
+        'required_files': [],
+        'priority': 10,
+        'additional_checks': [
+            lambda path: any(f.endswith('.py') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'javascript': {
-        'description': 'JavaScript Project', 
-        'indicators': ['package.json', 'package-lock.json', 'yarn.lock'],
-        'required_files': []
+        'description': 'JavaScript/Node.js Project', 
+        'indicators': ['package.json', 'package-lock.json', 'yarn.lock', 'node_modules/', 'webpack.config.js', '.npmrc', '.nvmrc', 'next.config.js'],
+        'file_patterns': ['*.js', '*.jsx', '*.mjs', '*.cjs'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith(('.js', '.jsx', '.mjs', '.cjs')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'typescript': {
         'description': 'TypeScript Project',
-        'indicators': ['tsconfig.json', 'tslint.json', 'typescript.json'],
-        'required_files': []
+        'indicators': ['tsconfig.json', 'tslint.json', 'typescript.json', '.ts', '.tsx', '.eslintrc'],
+        'file_patterns': ['*.ts', '*.tsx'],
+        'required_files': [],
+        'priority': 6,  # Higher than JS because TS projects often have JS files too
+        'additional_checks': [
+            lambda path: any(f.endswith(('.ts', '.tsx')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
+    'web': {
+        'description': 'Web Project',
+        'indicators': ['index.html', 'styles.css', '.html', '.css', 'public/', 'assets/', 'images/'],
+        'file_patterns': ['*.html', '*.css', '*.scss', '*.sass', '*.less', '*.svg'],
+        'required_files': [],
+        'priority': 3
     },
     'php': {
         'description': 'PHP Project',
-        'indicators': ['composer.json', 'composer.lock', 'artisan'],
-        'required_files': []
+        'indicators': ['composer.json', 'composer.lock', 'artisan', '.php', 'vendor/'],
+        'file_patterns': ['*.php'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith('.php') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'cpp': {
         'description': 'C++ Project',
-        'indicators': ['CMakeLists.txt', '*.cpp', '*.hpp', 'makefile', 'Makefile'],
-        'required_files': []
+        'indicators': ['CMakeLists.txt', 'makefile', 'Makefile', '.sln', '.vcxproj', 'compile_commands.json'],
+        'file_patterns': ['*.cpp', '*.hpp', '*.cc', '*.h', '*.cxx', '*.hxx'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith(('.cpp', '.hpp', '.cc', '.cxx', '.h', '.hxx')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
-    'c': {
-        'description': 'C Project',
-        'indicators': ['*.c', '*.h', 'makefile', 'Makefile'],
-        'required_files': []
+    'java': {
+        'description': 'Java Project',
+        'indicators': ['pom.xml', 'build.gradle', 'settings.gradle', 'gradlew', 'mvnw', '.classpath', '.project'],
+        'file_patterns': ['*.java', '*.jar'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith('.java') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'csharp': {
         'description': 'C# Project',
-        'indicators': ['.sln', '.csproj', '.cs'],
-        'required_files': []
+        'indicators': ['.sln', '.csproj', '.cs', 'packages.config', 'NuGet.Config', 'bin/Debug/', 'bin/Release/'],
+        'file_patterns': ['*.cs'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith('.cs') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'go': {
         'description': 'Go Project',
-        'indicators': ['go.mod', 'go.sum'],
-        'required_files': []
+        'indicators': ['go.mod', 'go.sum', 'go.work', 'vendor/'],
+        'file_patterns': ['*.go'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith('.go') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
-    'ruby': {
-        'description': 'Ruby Project',
-        'indicators': ['Gemfile', 'Rakefile', '*.rb'],
-        'required_files': []
+    'rust': {
+        'description': 'Rust Project',
+        'indicators': ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'target/'],
+        'file_patterns': ['*.rs'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith('.rs') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'swift': {
         'description': 'Swift Project',
-        'indicators': ['Package.swift', '*.xcodeproj', '*.xcworkspace'],
-        'required_files': []
+        'indicators': ['Package.swift', '*.xcodeproj', '*.xcworkspace', '*.pbxproj', 'Pods/'],
+        'file_patterns': ['*.swift'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith('.swift') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
+    'ruby': {
+        'description': 'Ruby Project',
+        'indicators': ['Gemfile', 'Rakefile', '*.rb', '.ruby-version', 'config.ru'],
+        'file_patterns': ['*.rb', '*.erb'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith(('.rb', '.erb')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'kotlin': {
         'description': 'Kotlin Project',
-        'indicators': ['*.kt', 'build.gradle.kts'],
-        'required_files': []
+        'indicators': ['*.kt', 'build.gradle.kts', '.kt'],
+        'file_patterns': ['*.kt', '*.kts'],
+        'required_files': [],
+        'priority': 5,
+        'additional_checks': [
+            lambda path: any(f.endswith(('.kt', '.kts')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
     },
     'zig': {
         'description': 'Zig Project',
         'indicators': ['build.zig', 'zig.mod'],
-        'required_files': []
+        'required_files': [],
+        'priority': 5
     },
     'rush': {
         'description': 'Rush Project',
         'indicators': ['rush.json', '.rush'],
-        'required_files': []
+        'required_files': [],
+        'priority': 5
     },
     'perl': {
         'description': 'Perl Project',
         'indicators': ['*.pl', '*.pm', 'cpanfile'],
-        'required_files': []
-    },
-    'matlab': {
-        'description': 'MATLAB Project',
-        'indicators': ['*.m', '*.mat', '*.mlx'],
-        'required_files': []
+        'required_files': [],
+        'priority': 5
     },
     'groovy': {
         'description': 'Groovy Project',
         'indicators': ['*.groovy', 'build.gradle', 'settings.gradle'],
-        'required_files': []
+        'required_files': [],
+        'priority': 5
     },
     'lua': {
         'description': 'Lua Project',
         'indicators': ['*.lua', 'init.lua', 'main.lua', 'rockspec'],
-        'required_files': []
+        'required_files': [],
+        'priority': 5
     }
 }
 
-# Add cache for scan results
+# Add cache for scan results with expiration
 _scan_cache = {}
+CACHE_EXPIRATION = 300  # 5 minutes
 
 def detect_project_type(project_path):
+    """Detect project type with improved accuracy."""
     if not os.path.exists(project_path):
-        return {
-            'type': 'generic',
-            'language': 'unknown',
-            'framework': 'none'
-        }
+        return _get_generic_result()
         
     try:
         files = os.listdir(project_path)
+        files_set = set(files)  # For faster lookups
     except (PermissionError, OSError):
-        return {
-            'type': 'generic',
-            'language': 'unknown',
-            'framework': 'none'
-        }
-        
+        return _get_generic_result()
+
+    # Get all files recursively up to depth 2 for better detection
+    all_files = _get_files_recursive(project_path, max_depth=2)
+    
     project_type = 'generic'
+    max_priority = -1
+    matched_files = []
+    
     # Check each project type
     for type_name, rules in PROJECT_TYPES.items():
-        # Check for indicator files
+        priority = rules.get('priority', 0)
+        matched = False
+        type_matched_files = []
+        
+        # Check direct indicators (files/folders that strongly indicate a project type)
         for indicator in rules.get('indicators', []):
-            # Handle wildcard patterns
-            if '*' in indicator:
-                pattern = indicator.replace('.', '[.]').replace('*', '.*')
-                if any(re.match(pattern, f) for f in files):
-                    project_type = type_name
-                    break
-            # Direct file match
-            elif indicator in files:
-                project_type = type_name
-                break
+            if _check_indicator(indicator, files_set, all_files):
+                matched = True
+                type_matched_files.append(indicator)
                 
-        # Check for required files if specified
+        # Check file patterns if no direct indicators found
+        if not matched and 'file_patterns' in rules:
+            for pattern in rules['file_patterns']:
+                matching_files = _find_matching_files(pattern, all_files)
+                if matching_files:
+                    matched = True
+                    type_matched_files.extend(matching_files)
+                    
+        # Check required files if specified
         if rules.get('required_files'):
-            if all(f in files for f in rules['required_files']):
-                project_type = type_name
-                break
+            if not all(f in files_set for f in rules['required_files']):
+                matched = False
                 
+        # Run additional checks if specified
+        if matched and rules.get('additional_checks'):
+            try:
+                matched = all(check(project_path) for check in rules['additional_checks'])
+            except Exception:
+                matched = False
+                
+        # Update project type if this match has higher priority
+        if matched and priority > max_priority:
+            project_type = type_name
+            max_priority = priority
+            matched_files = type_matched_files
+
     # Detect language and framework
     language, framework = detect_language_and_framework(project_path)
     
-    # Fallback checks for common development files
+    # If no specific type detected, check for common development patterns
     if project_type == 'generic':
-        common_dev_files = [
-            'README.md',
-            '.gitignore',
-            'LICENSE',
-            'CHANGELOG.md',
-            'docs/',
-            'src/',
-            'test/',
-            'tests/'
-        ]
-        
-        if any(f in files for f in common_dev_files):
-            project_type = 'generic_dev'
+        project_type = _detect_generic_project_type(files_set, all_files)
     
-    return {
+    result = {
         'type': project_type,
         'language': language,
         'framework': framework,
-        'description': PROJECT_TYPES.get(project_type, {'description': 'Generic Project'})['description']
+        'description': PROJECT_TYPES.get(project_type, {'description': 'Generic Project'})['description'],
+        'matched_files': matched_files,
+        'path': project_path
     }
+    
+    return result
+
+def _get_generic_result():
+    """Return a generic project result."""
+    return {
+        'type': 'generic',
+        'language': 'unknown',
+        'framework': 'none',
+        'description': 'Generic Project',
+        'matched_files': [],
+        'path': ''
+    }
+
+def _get_files_recursive(path, max_depth=2, current_depth=0):
+    """Get all files recursively up to max_depth."""
+    if current_depth > max_depth:
+        return set()
+        
+    try:
+        files = set()
+        with os.scandir(path) as entries:
+            for entry in entries:
+                if entry.is_file():
+                    files.add(entry.name)
+                elif entry.is_dir() and not entry.name.startswith('.'):
+                    subfiles = _get_files_recursive(entry.path, max_depth, current_depth + 1)
+                    files.update(f"{entry.name}/{f}" for f in subfiles)
+        return files
+    except (PermissionError, OSError):
+        return set()
+
+def _check_indicator(indicator, files_set, all_files):
+    """Check if an indicator matches any files."""
+    if '*' in indicator:
+        pattern = indicator.replace('.', '[.]').replace('*', '.*')
+        return any(re.match(pattern + '$', f) for f in all_files)
+    return indicator in files_set
+
+def _find_matching_files(pattern, files):
+    """Find files matching a pattern."""
+    if '*' in pattern:
+        pattern = pattern.replace('.', '[.]').replace('*', '.*')
+        return [f for f in files if re.match(pattern + '$', f)]
+    return [f for f in files if f == pattern]
+
+def _detect_generic_project_type(files_set, all_files):
+    """Detect if a generic project has any development patterns."""
+    dev_indicators = {
+        'docs': ['README.md', 'CONTRIBUTING.md', 'docs/', 'documentation/'],
+        'vcs': ['.git/', '.svn/', '.hg/'],
+        'tests': ['test/', 'tests/', 'spec/', 'specs/'],
+        'config': ['.env', 'config/', 'settings/'],
+        'build': ['build/', 'dist/', 'target/']
+    }
+    
+    matched_categories = set()
+    
+    for category, indicators in dev_indicators.items():
+        if any(ind in files_set or any(f.startswith(ind) for f in all_files) for ind in indicators):
+            matched_categories.add(category)
+            
+    return 'generic_dev' if matched_categories else 'generic'
 
 def detect_language_and_framework(project_path):
     """Detect primary language and framework of a project."""
@@ -279,7 +424,7 @@ def scan_for_projects(root_path, max_depth=3, ignored_dirs=None, use_cache=True)
     if use_cache and cache_key in _scan_cache:
         cache_time, cached_results = _scan_cache[cache_key]
         # Cache is valid for 5 minutes
-        if time.time() - cache_time < 300:
+        if time.time() - cache_time < CACHE_EXPIRATION:
             return cached_results
     
     # Perform scan as usual
