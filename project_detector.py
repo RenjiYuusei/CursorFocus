@@ -155,12 +155,6 @@ PROJECT_TYPES = {
         'required_files': [],
         'priority': 5
     },
-    'groovy': {
-        'description': 'Groovy Project',
-        'indicators': ['*.groovy', 'build.gradle', 'settings.gradle'],
-        'required_files': [],
-        'priority': 5
-    },
     'lua': {
         'description': 'Lua Project',
         'indicators': ['*.lua', 'init.lua', 'main.lua', 'rockspec'],
@@ -346,8 +340,6 @@ def detect_language_and_framework(project_path):
         'zig': ['.zig', 'build.zig'],
         'rush': ['.rush', 'rush.json'],
         'perl': ['.pl', '.pm', 'cpanfile'],
-        'matlab': ['.m', '.mat', '.mlx'],
-        'groovy': ['.groovy', 'build.gradle'],
         'lua': ['.lua', 'init.lua', 'main.lua']
     }
     
@@ -425,8 +417,6 @@ def get_file_type_info(filename):
         '.zig': ('Zig Source', 'Zig implementation file'),
         '.rush': ('Rush Source', 'Rush implementation file'),
         '.perl': ('Perl Source', 'Perl script file'),
-        '.matlab': ('MATLAB Source', 'MATLAB script file'),
-        '.groovy': ('Groovy Source', 'Groovy implementation file'),
         '.lua': ('Lua Source', 'Lua script file')
     }
     

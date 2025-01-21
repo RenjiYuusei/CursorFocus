@@ -30,8 +30,6 @@ class RulesGenerator:
         'r': r'(?:library|require)\s*\([\'"]([^\'"]+)[\'"]\)',
         'julia': r'(?:using|import)\s+([a-zA-Z0-9_\.]+)(?:\s*:\s*[a-zA-Z0-9_,\s]+)?',
         'perl': r'(?:use|require)\s+([a-zA-Z0-9_]+)(?:\s+([a-zA-Z0-9_]+))?',
-        'matlab': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
-        'groovy': r'def\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
         'lua': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?'
     }
 
@@ -56,8 +54,6 @@ class RulesGenerator:
         'r': r'(?:setClass|setRefClass)\s*\([\'"](\w+)[\'"]',
         'julia': r'(?:struct|abstract type|primitive type)\s+(\w+)(?:\s*<:\s*(\w+))?\s*(?:end)?',
         'perl': r'(?:package|use)\s+([a-zA-Z0-9_]+)(?:\s+([a-zA-Z0-9_]+))?',
-        'matlab': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
-        'groovy': r'def\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
         'lua': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?'
     }
 
@@ -82,8 +78,6 @@ class RulesGenerator:
         'r': r'(\w+)\s*<-\s*function\s*\((.*?)\)',
         'julia': r'function\s+(\w+)\s*\((.*?)\)(?:\s*::\s*([^{]+))?\s*(?:end)?',
         'perl': r'(?:sub|use)\s+([a-zA-Z0-9_]+)(?:\s+([a-zA-Z0-9_]+))?',
-        'matlab': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
-        'groovy': r'def\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
         'lua': r'function\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?'
     }
 
@@ -189,7 +183,7 @@ class RulesGenerator:
                 
                 # Analyze code files
                 file_ext = os.path.splitext(file)[1].lower()
-                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush', '.perl', '.matlab', '.groovy', '.lua']:
+                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush', '.perl', '.lua']:
                     structure['files'].append(rel_path)
                     dir_stats[rel_root]['code_files'] += 1
                     
@@ -257,8 +251,6 @@ class RulesGenerator:
             '.zig': 'Zig',
             '.rush': 'Rush',
             '.perl': 'Perl',
-            '.matlab': 'MATLAB',
-            '.groovy': 'Groovy',
             '.lua': 'Lua'
         }
         return lang_map.get(ext, 'Unknown')
@@ -302,10 +294,6 @@ class RulesGenerator:
             self._analyze_julia_file(content, rel_path, structure)
         elif file_ext == '.perl':
             self._analyze_perl_file(content, rel_path, structure)
-        elif file_ext == '.matlab':
-            self._analyze_matlab_file(content, rel_path, structure)
-        elif file_ext == '.groovy':
-            self._analyze_groovy_file(content, rel_path, structure)
         elif file_ext == '.lua':
             self._analyze_lua_file(content, rel_path, structure)
 
@@ -360,124 +348,87 @@ class RulesGenerator:
     def _generate_ai_rules(self, project_info: Dict[str, Any]) -> Dict[str, Any]:
         """Generate rules using Gemini AI based on project analysis."""
         try:
-            # Analyze project
+            # Analyze project structure
             project_structure = self._analyze_project_structure()
             
-            # Create detailed prompt
-            prompt = f"""As an AI assistant working in Cursor IDE, analyze this project to understand how you should behave and generate code that perfectly matches the project's patterns and standards.
+            # Create detailed prompt with more context and examples
+            prompt = f"""As an AI assistant working in Cursor IDE, analyze this project to generate comprehensive coding rules and patterns that perfectly match the project's standards.
 
 Project Overview:
 Language: {project_info.get('language', 'unknown')}
 Framework: {project_info.get('framework', 'none')}
 Type: {project_info.get('type', 'generic')}
 Description: {project_info.get('description', 'Generic Project')}
-Primary Purpose: Code generation and project analysis
 
-Project Metrics:
-- Files & Structure:
-  - Total Files: {len(project_structure['files'])}
-  - Config Files: {len(project_structure['config_files'])}
-- Dependencies:
-  - Frameworks: {', '.join(project_structure['frameworks']) or 'none'}
-  - Core Dependencies: {', '.join(list(project_structure['dependencies'].keys())[:10])}
-  - Total Dependencies: {len(project_structure['dependencies'])}
+Detailed Analysis:
+1. Code Metrics:
+- Total Files: {len(project_structure['files'])}
+- Code Files: {len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))])}
+- Test Files: {len([f for f in project_structure['files'] if 'test' in f.lower()])}
+- Config Files: {len(project_structure['config_files'])}
 
-Project Ecosystem:
-1. Development Environment:
-- Project Structure:
-{chr(10).join([f"- {f}" for f in project_structure['files'] if f.endswith(('.json', '.md', '.env', '.gitignore'))][:5])}
-- IDE Configuration:
-{chr(10).join([f"- {f}" for f in project_structure['files'] if '.vscode' in f or '.idea' in f][:5])}
-- Build System:
-{chr(10).join([f"- {f}" for f in project_structure['files'] if f in ['setup.py', 'requirements.txt', 'package.json', 'Makefile', 'composer.json', 'Gemfile', 'go.mod', 'CMakeLists.txt', 'build.gradle', 'pom.xml', 'webpack.config.js']])}
+2. Code Patterns Analysis:
+- Classes: {len(project_structure['patterns']['class_patterns'])}
+- Functions: {len(project_structure['patterns']['function_patterns'])}
+- Imports: {len(project_structure['patterns']['imports'])}
+- Error Patterns: {len(project_structure['patterns']['error_patterns'])}
 
-2. Project Components:
-- Core Modules:
-{chr(10).join([f"- {f}: {sum(1 for p in project_structure['patterns']['function_patterns'] if p['file'] == f)} functions" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rb, .go, .zig, .rush') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
-- Support Modules:
-{chr(10).join([f"- {f}" for f in project_structure['files'] if any(x in f.lower() for x in ['util', 'helper', 'common', 'shared'])][:5])}
-- Templates:
-{chr(10).join([f"- {f}" for f in project_structure['files'] if 'template' in f.lower()][:5])}
+3. Directory Structure:
+{chr(10).join([f"- {dir_path}: {stats['total_files']} files" for dir_path, stats in project_structure.get('directory_structure', {}).items()][:10])}
 
-3. Module Organization Analysis:
-- Core Module Functions:
-{chr(10).join([f"- {f}: Primary module handling {f.split('_')[0].title()} functionality" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rb, .go, .zig, .rush') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
+4. Common Patterns Found:
+Classes:
+{chr(10).join([f"- {c['name']} ({c['file']})" for c in project_structure['patterns']['class_patterns'][:5]])}
 
-- Module Dependencies:
-{chr(10).join([f"- {f} depends on: {', '.join(list(set([imp.split('.')[0] for imp in project_structure['patterns']['imports'] if imp in f])))}" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rb, .go, .zig, .rush')][:5])}
+Functions:
+{chr(10).join([f"- {f['name']} ({f['file']})" for f in project_structure['patterns']['function_patterns'][:5]])}
 
-- Module Responsibilities:
-Please analyze each module's code and describe its core responsibilities based on:
-1. Function and class names
-2. Import statements
-3. Code patterns and structures
-4. Documentation strings
-5. Variable names and usage
-6. Error handling patterns
-7. Performance optimization techniques
+Error Handling:
+{chr(10).join([f"- {e['exception_var']} ({e['file']})" for e in project_structure['patterns']['error_patterns'][:5]])}
 
-- Module Organization Rules:
-Based on the codebase analysis, identify and describe:
-1. Module organization patterns
-2. Dependency management approaches
-3. Code structure conventions
-4. Naming conventions
-5. Documentation practices
-6. Error handling strategies
-7. Performance optimization patterns
+5. Code Organization:
+{chr(10).join([f"- {p['type']}: {p['name']} ({p['file']})" for p in project_structure['patterns']['code_organization'][:5]])}
 
-Code Sample Analysis:
-{chr(10).join(f"File: {file}:{chr(10)}{content[:10000]}..." for file, content in list(project_structure['code_contents'].items())[:50])}
+Based on this analysis, generate comprehensive rules that cover:
 
-Based on this detailed analysis, create behavior rules for AI to:
-1. Replicate the project's exact code style and patterns
-2. Match naming conventions precisely
-3. Follow identical error handling patterns
-4. Copy performance optimization techniques
-5. Maintain documentation consistency
-6. Keep current code organization
-7. Preserve module boundaries
-8. Use established logging methods
-9. Follow configuration patterns
+1. Code Style:
+- Naming conventions (with real examples from the codebase)
+- Documentation standards
+- String formatting
+- File handling
+- Error handling
+- Performance optimizations
+- Type hints usage
+- Comments and documentation
+- Module organization
+- Testing practices
 
-Return a JSON object defining AI behavior rules:
-{{"ai_behavior": {{
-    "code_generation": {{
-        "style": {{
-            "prefer": [],
-            "avoid": []
-        }},
-        "error_handling": {{
-            "prefer": [],
-            "avoid": []
-        }},
-        "performance": {{
-            "prefer": [],
-            "avoid": []
-        }},
-        "suggest_patterns": {{
-            "improve": [],
-            "avoid": []
-        }},
-        "module_organization": {{
-            "structure": [],  # Analyze and describe the current module structure
-            "dependencies": [],  # Analyze actual dependencies between modules
-            "responsibilities": {{}},  # Analyze and describe each module's core responsibilities
-            "rules": [],  # Extract rules from actual code organization patterns
-            "naming": {{}}  # Extract naming conventions from actual code
-        }}
-    }}
-}}}}
+2. Error Handling:
+- Exception types used
+- Error logging patterns
+- Recovery strategies
+- Default values
+- User feedback
 
-Critical Guidelines for AI:
-1. NEVER deviate from existing code patterns
-2. ALWAYS match the project's exact style
-3. MAINTAIN the current complexity level
-4. COPY the existing skill level approach
-5. PRESERVE all established practices
-6. REPLICATE the project's exact style
-7. UNDERSTAND pattern purposes"""
-    
+3. Performance:
+- Data structure choices
+- Caching strategies
+- Resource management
+- Optimization techniques
+- Memory usage
+
+4. Module Organization:
+- File structure
+- Dependency management
+- Module responsibilities
+- Code organization
+- Naming conventions
+
+Return a JSON object with detailed rules and examples from the actual codebase.
+Focus on being specific and actionable, with real examples rather than generic rules.
+Include both preferred patterns and patterns to avoid, based on actual code analysis.
+"""
+
             # Get AI response
             response = self.chat_session.send_message(prompt)
             
@@ -492,10 +443,35 @@ Critical Guidelines for AI:
             try:
                 ai_rules = json.loads(json_str)
                 
+                # Validate and enhance rules
                 if not isinstance(ai_rules, dict) or 'ai_behavior' not in ai_rules:
-                    print("⚠️ Invalid JSON structure in AI response")
                     raise ValueError("Invalid AI rules structure")
-                    
+                
+                # Add metadata
+                ai_rules['metadata'] = {
+                    'generated_at': self._get_timestamp(),
+                    'project_stats': {
+                        'total_files': len(project_structure['files']),
+                        'code_files': len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))]),
+                        'test_files': len([f for f in project_structure['files'] if 'test' in f.lower()]),
+                        'config_files': len(project_structure['config_files'])
+                    },
+                    'analysis_coverage': {
+                        'classes_analyzed': len(project_structure['patterns']['class_patterns']),
+                        'functions_analyzed': len(project_structure['patterns']['function_patterns']),
+                        'imports_analyzed': len(project_structure['patterns']['imports']),
+                        'error_patterns_found': len(project_structure['patterns']['error_patterns'])
+                    }
+                }
+                
+                # Add examples from codebase
+                ai_rules['ai_behavior']['code_generation']['examples'] = {
+                    'class_examples': [{'name': c['name'], 'file': c['file']} for c in project_structure['patterns']['class_patterns'][:5]],
+                    'function_examples': [{'name': f['name'], 'file': f['file']} for f in project_structure['patterns']['function_patterns'][:5]],
+                    'error_handling_examples': [{'type': e['exception_var'], 'file': e['file']} for e in project_structure['patterns']['error_patterns'][:5]],
+                    'code_organization_examples': [{'type': p['type'], 'name': p['name'], 'file': p['file']} for p in project_structure['patterns']['code_organization'][:5]]
+                }
+                
                 return ai_rules
                 
             except json.JSONDecodeError as e:
@@ -665,15 +641,98 @@ Do not include technical metrics in the description."""
                 with open(rules_file, 'w', encoding='utf-8') as f:
                     f.write(content)
             else:  # JSON format
+                # Enhanced rules structure
                 rules = {
                     "version": "1.0",
                     "last_updated": self._get_timestamp(),
                     "project": {
                         **project_info,
-                        "description": description
+                        "description": description,
+                        "stats": {
+                            "total_files": len(project_structure['files']),
+                            "code_files": len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))]),
+                            "test_files": len([f for f in project_structure['files'] if 'test' in f.lower()]),
+                            "config_files": len(project_structure['config_files']),
+                            "analysis_coverage": {
+                                "classes_analyzed": len(project_structure['patterns']['class_patterns']),
+                                "functions_analyzed": len(project_structure['patterns']['function_patterns']),
+                                "imports_analyzed": len(project_structure['patterns']['imports']),
+                                "error_patterns_found": len(project_structure['patterns']['error_patterns'])
+                            }
+                        },
+                        "structure": {
+                            "directories": {
+                                dir_path: {
+                                    "total_files": stats['total_files'],
+                                    "code_files": stats['code_files'],
+                                    "languages": stats['languages'],
+                                    "patterns": stats['patterns']
+                                }
+                                for dir_path, stats in project_structure.get('directory_structure', {}).items()
+                            },
+                            "main_modules": [
+                                {
+                                    "name": f,
+                                    "classes": len([c for c in project_structure['patterns']['class_patterns'] if c['file'] == f]),
+                                    "functions": len([func for func in project_structure['patterns']['function_patterns'] if func['file'] == f]),
+                                    "imports": len([imp for imp in project_structure['patterns']['imports'] if imp in f])
+                                }
+                                for f in project_structure['files']
+                                if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))
+                                and not any(x in f.lower() for x in ['test', 'setup', 'config'])
+                            ][:10]
+                        }
                     },
-                    "ai_behavior": ai_rules['ai_behavior']
+                    "ai_behavior": {
+                        **ai_rules['ai_behavior'],
+                        "examples": {
+                            "classes": [
+                                {
+                                    "name": c['name'],
+                                    "file": c['file'],
+                                    "type": "class",
+                                    "inheritance": c.get('inheritance', '')
+                                }
+                                for c in project_structure['patterns']['class_patterns'][:5]
+                            ],
+                            "functions": [
+                                {
+                                    "name": f['name'],
+                                    "file": f['file'],
+                                    "parameters": f.get('parameters', ''),
+                                    "return_type": f.get('return_type', None)
+                                }
+                                for f in project_structure['patterns']['function_patterns'][:5]
+                            ],
+                            "error_handling": [
+                                {
+                                    "type": e['exception_var'],
+                                    "file": e['file']
+                                }
+                                for e in project_structure['patterns']['error_patterns'][:5]
+                            ],
+                            "code_organization": [
+                                {
+                                    "type": p['type'],
+                                    "name": p['name'],
+                                    "file": p['file']
+                                }
+                                for p in project_structure['patterns']['code_organization'][:5]
+                            ]
+                        },
+                        "patterns": {
+                            "naming": {
+                                "classes": list(set(c['name'] for c in project_structure['patterns']['class_patterns'][:10])),
+                                "functions": list(set(f['name'] for f in project_structure['patterns']['function_patterns'][:10])),
+                                "variables": list(set(v['name'] for v in project_structure['patterns'].get('variable_patterns', [])[:10]))
+                            },
+                            "imports": list(set(project_structure['patterns']['imports'][:20])),
+                            "error_handling": list(set(e['exception_var'] for e in project_structure['patterns']['error_patterns'][:10])),
+                            "code_organization": list(set(f"{p['type']}: {p['name']}" for p in project_structure['patterns']['code_organization'][:10]))
+                        }
+                    }
                 }
+                
                 with open(rules_file, 'w', encoding='utf-8') as f:
                     json.dump(rules, f, indent=2)
             
@@ -681,7 +740,7 @@ Do not include technical metrics in the description."""
                 
         except Exception as e:
             print(f"❌ Failed to generate rules: {e}")
-            raise 
+            raise
 
     def _analyze_python_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
         """Analyze Python file content."""
@@ -1504,76 +1563,6 @@ Do not include technical metrics in the description."""
                 'file': rel_path
             })
 
-    def _analyze_matlab_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze MATLAB file content."""
-        # Find imports/libraries
-        imports = re.findall(self.IMPORT_PATTERNS['matlab'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find S4 classes
-        classes = re.finditer(self.CLASS_PATTERNS['matlab'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 's4_class',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['matlab'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find pipes
-        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
-        for match in pipes:
-            structure['patterns']['code_organization'].append({
-                'type': 'pipe',
-                'from': match.group(1),
-                'to': match.group(2),
-                'file': rel_path
-            })
-
-    def _analyze_groovy_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Groovy file content."""
-        # Find imports/libraries
-        imports = re.findall(self.IMPORT_PATTERNS['groovy'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find S4 classes
-        classes = re.finditer(self.CLASS_PATTERNS['groovy'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 's4_class',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['groovy'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find pipes
-        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
-        for match in pipes:
-            structure['patterns']['code_organization'].append({
-                'type': 'pipe',
-                'from': match.group(1),
-                'to': match.group(2),
-                'file': rel_path
-            })
-
     def _analyze_lua_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
         """Analyze Lua file content."""
         # Find imports/libraries
@@ -1607,4 +1596,4 @@ Do not include technical metrics in the description."""
                 'from': match.group(1),
                 'to': match.group(2),
                 'file': rel_path
-            }) 
+            })

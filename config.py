@@ -64,8 +64,6 @@ def get_default_config():
             ".zig": 300,   # Zig
             ".rush": 300,  # Rush
             ".perl": 400,  # Perl
-            ".matlab": 400,# MATLAB
-            ".groovy": 300,# Groovy
             ".lua": 300,   # Lua
             "default": 300
         }
@@ -103,8 +101,6 @@ CODE_EXTENSIONS = {
     '.zig',   # Zig
     '.rush',  # Rush
     '.perl',  # Perl
-    '.matlab',# MATLAB
-    '.groovy',# Groovy
     '.lua'    # Lua
 }
 
@@ -138,20 +134,14 @@ FUNCTION_PATTERNS = {
     # Go
     'go_function': r'func\s+([a-zA-Z_]\w*)\s*\([^)]*\)(?:\s*\([^)]*\))?\s*{',
     
-    # Ruby
-    'ruby_function': r'(?:def\s+)([a-zA-Z_]\w*[?!]?)',
+    # Ruby    'ruby_function': r'(?:def\s+)([a-zA-Z_]\w*[?!]?)',
     
     # Lua
     'lua_function': r'(?:local\s+)?function\s+([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)\s*\([^)]*\)',
     
     # Perl
     'perl_function': r'sub\s+([a-zA-Z_]\w*)\s*{',
-    
-    # MATLAB
-    'matlab_function': r'function\s+(?:\[?[^]]*\]?\s*=\s*)?([a-zA-Z_]\w*)\s*\(',
-    
-    # Groovy
-    'groovy_function': r'(?:def|public|private|protected)\s+([a-zA-Z_]\w*)\s*\([^)]*\)\s*{',
+
     
     # Zig
     'zig_function': r'(?:pub\s+)?fn\s+([a-zA-Z_]\w*)\s*\(',
