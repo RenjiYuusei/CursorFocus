@@ -3,6 +3,7 @@ import json
 import re
 from config import load_config
 import time
+from typing import List, Dict, Any
 
 # Load project types from config at module level
 _config = load_config()
@@ -171,6 +172,21 @@ PROJECT_TYPES = {
 # Add cache for scan results with expiration
 _scan_cache = {}
 CACHE_EXPIRATION = 300  # 5 minutes
+
+IGNORED_DIRECTORIES = {
+    '.git',
+    '.github', 
+    '__pycache__',
+    'node_modules',
+    'venv',
+    '.venv',
+    'env',
+    '.env',
+    'dist',
+    'build',
+    '.idea',
+    '.vscode'
+}
 
 def detect_project_type(project_path):
     """Detect project type with improved accuracy."""
@@ -492,12 +508,12 @@ def _do_scan(root_path, max_depth=3, ignored_dirs=None):
             return
             
         try:
-            # Skip ignored directories
-            if any(ignored in current_path.split(os.path.sep) for ignored in ignored_dirs):
-                return
-                
             # Scan subdirectories
             for item in os.listdir(current_path):
+                # Skip ignored directories immediately
+                if item in IGNORED_DIRECTORIES:
+                    continue
+                    
                 item_path = os.path.join(current_path, item)
                 if os.path.isdir(item_path):
                     # Check each subdirectory
