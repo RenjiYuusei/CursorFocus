@@ -80,7 +80,7 @@ If you prefer to set up manually:
 
 2. Run the setup script:
    ```bash
-   python setup.py
+   python setup.py --p path/to/your/project
    ```
 
 3. Run the script:
