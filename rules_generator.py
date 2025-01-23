@@ -20,8 +20,7 @@ class RulesGenerator:
         'c': r'#include\s*[<"]([^>"]+)[>"]',
         'kotlin': r'import\s+([^\n]+)',
         'swift': r'import\s+([^\n]+)',
-        'rust': r'(?:use|extern crate)\s+([a-zA-Z0-9_:]+)(?:\s*{[^}]*})?;',
-        'r': r'(?:library|require)\s*\([\'"]([^\'"]+)[\'"]\)'
+        'rust': r'(?:use|extern crate)\s+([a-zA-Z0-9_:]+)(?:\s*{[^}]*})?;'
     }
 
     CLASS_PATTERNS = {
@@ -35,8 +34,7 @@ class RulesGenerator:
         'c': r'(?:struct|enum|union)\s+(\w+)(?:\s*{)?',
         'kotlin': r'(?:class|interface|object)\s+(\w+)(?:\s*:\s*([^{]+))?',
         'swift': r'(?:class|struct|protocol|enum)\s+(\w+)(?:\s*:\s*([^{]+))?',
-        'rust': r'(?:struct|enum|trait|impl)\s+(\w+)(?:\s*(?:for\s+(\w+))?)?(?:\s*{|\s*;)?',
-        'r': r'(?:setClass|setRefClass)\s*\([\'"](\w+)[\'"]'
+        'rust': r'(?:struct|enum|trait|impl)\s+(\w+)(?:\s*(?:for\s+(\w+))?)?(?:\s*{|\s*;)?'
     }
 
     FUNCTION_PATTERNS = {
@@ -50,8 +48,7 @@ class RulesGenerator:
         'c': r'(?:static\s+)?(?:[\w*]+\s+)?(\w+)\s*\((.*?)\)(?:\s*{)?',
         'kotlin': r'fun\s+(\w+)\s*\((.*?)\)(?:\s*:\s*([^{]+))?',
         'swift': r'func\s+(\w+)\s*\((.*?)\)(?:\s*->\s*([^{]+))?',
-        'rust': r'(?:pub\s+)?(?:async\s+)?fn\s+(\w+)\s*(?:<[^>]+>)?\s*\((.*?)\)(?:\s*->\s*([^{]+))?(?:\s*where\s+[^{]+)?\s*{?',
-        'r': r'(\w+)\s*<-\s*function\s*\((.*?)\)'
+        'rust': r'(?:pub\s+)?(?:async\s+)?fn\s+(\w+)\s*(?:<[^>]+>)?\s*\((.*?)\)(?:\s*->\s*([^{]+))?(?:\s*where\s+[^{]+)?\s*{?'
     }
 
     METHOD_PATTERN = r'(?:async\s+)?(\w+)\s*\((.*?)\)\s*{'
@@ -156,7 +153,7 @@ class RulesGenerator:
                 
                 # Analyze code files
                 file_ext = os.path.splitext(file)[1].lower()
-                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rs', '.r', '.zig', '.rush', '.perl', '.matlab', '.groovy', '.lua']:
+                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rs']:
                     structure['files'].append(rel_path)
                     dir_stats[rel_root]['code_files'] += 1
                     
@@ -219,8 +216,7 @@ class RulesGenerator:
             '.hpp': 'C++ Header',
             '.cs': 'C#',
             '.csx': 'C# Script',
-            '.rs': 'Rust',
-            '.r': 'R'
+            '.rs': 'Rust'
         }
         return lang_map.get(ext, 'Unknown')
 
@@ -330,11 +326,11 @@ Project Ecosystem:
 - IDE Configuration:
 {chr(10).join([f"- {f}" for f in project_structure['files'] if '.vscode' in f or '.idea' in f][:5])}
 - Build System:
-{chr(10).join([f"- {f}" for f in project_structure['files'] if f in ['setup.py', 'requirements.txt', 'package.json', 'Makefile', 'composer.json', 'Gemfile', 'go.mod', 'CMakeLists.txt', 'build.gradle', 'pom.xml', 'webpack.config.js']])}
+{chr(10).join([f"- {f}" for f in project_structure['files'] if f in ['setup.py', 'requirements.txt', 'package.json', 'Makefile', 'composer.json', 'pom.xml', 'webpack.config.js']])}
 
 2. Project Components:
 - Core Modules:
-{chr(10).join([f"- {f}: {sum(1 for p in project_structure['patterns']['function_patterns'] if p['file'] == f)} functions" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rs, .r, .zig, .rush') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
+{chr(10).join([f"- {f}: {sum(1 for p in project_structure['patterns']['function_patterns'] if p['file'] == f)} functions" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rs') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
 - Support Modules:
 {chr(10).join([f"- {f}" for f in project_structure['files'] if any(x in f.lower() for x in ['util', 'helper', 'common', 'shared'])][:5])}
 - Templates:
@@ -342,10 +338,10 @@ Project Ecosystem:
 
 3. Module Organization Analysis:
 - Core Module Functions:
-{chr(10).join([f"- {f}: Primary module handling {f.split('_')[0].title()} functionality" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rs, .r, .zig, .rush') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
+{chr(10).join([f"- {f}: Primary module handling {f.split('_')[0].title()} functionality" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rs') and not any(x in f.lower() for x in ['setup', 'config'])][:5])}
 
 - Module Dependencies:
-{chr(10).join([f"- {f} depends on: {', '.join(list(set([imp.split('.')[0] for imp in project_structure['patterns']['imports'] if imp in f])))}" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rs, .r, .zig, .rush')][:5])}
+{chr(10).join([f"- {f} depends on: {', '.join(list(set([imp.split('.')[0] for imp in project_structure['patterns']['imports'] if imp in f])))}" for f in project_structure['files'] if f.endswith('.py, .js, .ts, .tsx, .kt, .php, .swift, .cpp, .c, .h, .hpp, .cs, .csx, .rs')][:5])}
 
 - Module Responsibilities:
 Please analyze each module's code and describe its core responsibilities based on:
@@ -1045,186 +1041,6 @@ Do not include technical metrics in the description."""
                 'name': match.group(2),
                 'file': rel_path
             })
-
-    def _analyze_ruby_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Ruby file content."""
-        # Find requires
-        imports = re.findall(self.IMPORT_PATTERNS['ruby'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes and modules
-        classes = re.finditer(self.CLASS_PATTERNS['ruby'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2) if match.group(2) else '',
-                'file': rel_path
-            })
-        
-        # Find methods
-        methods = re.finditer(self.FUNCTION_PATTERNS['ruby'], content)
-        for match in methods:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2) if match.group(2) else '',
-                'file': rel_path
-            })
-            
-        # Find modules
-        modules = re.finditer(r'module\s+(\w+)', content)
-        for match in modules:
-            structure['patterns']['code_organization'].append({
-                'type': 'module',
-                'name': match.group(1),
-                'file': rel_path
-            })
-            
-        # Find mixins
-        mixins = re.finditer(r'include\s+(\w+)', content)
-        for match in mixins:
-            structure['patterns']['code_organization'].append({
-                'type': 'mixin',
-                'name': match.group(1),
-                'file': rel_path
-            })
-
-    def _analyze_go_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Go file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['go'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find structs
-        structs = re.finditer(self.CLASS_PATTERNS['go'], content)
-        for match in structs:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 'struct',
-                'file': rel_path
-            })
-        
-        # Find functions and methods
-        functions = re.finditer(self.FUNCTION_PATTERNS['go'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find interfaces
-        interfaces = re.finditer(r'type\s+(\w+)\s+interface\s*{([^}]*)}', content)
-        for match in interfaces:
-            structure['patterns']['code_organization'].append({
-                'type': 'interface',
-                'name': match.group(1),
-                'methods': match.group(2).strip(),
-                'file': rel_path
-            })
-            
-        # Find constants
-        constants = re.finditer(r'const\s+\(\s*([^)]+)\s*\)', content)
-        for match in constants:
-            structure['patterns']['code_organization'].append({
-                'type': 'const_block',
-                'constants': match.group(1).strip(),
-                'file': rel_path
-            })
-
-    def _analyze_zig_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Zig file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['zig'], content)
-        for imp in imports:
-            structure['dependencies'].update({imp[1]: True})  # Use the actual import path
-            structure['patterns']['imports'].append(imp[1])
-        
-        # Find structs
-        structs = re.finditer(self.CLASS_PATTERNS['zig'], content)
-        for match in structs:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 'struct',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['zig'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-            
-        # Find comptime blocks
-        comptimes = re.finditer(r'comptime\s*{([^}]*)}', content)
-        for match in comptimes:
-            structure['patterns']['code_organization'].append({
-                'type': 'comptime_block',
-                'content': match.group(1).strip(),
-                'file': rel_path
-            })
-            
-        # Find test blocks
-        tests = re.finditer(r'test\s+"([^"]+)"\s*{([^}]*)}', content)
-        for match in tests:
-            structure['patterns']['code_organization'].append({
-                'type': 'test',
-                'name': match.group(1),
-                'content': match.group(2).strip(),
-                'file': rel_path
-            })
-
-    def _analyze_rush_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Rush file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['rush'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes and interfaces
-        classes = re.finditer(self.CLASS_PATTERNS['rush'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2) if match.group(2) else '',
-                'interfaces': match.group(3).strip() if match.group(3) else '',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['rush'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-            
-        # Find decorators
-        decorators = re.finditer(r'@(\w+)(?:\((.*?)\))?', content)
-        for match in decorators:
-            structure['patterns']['code_organization'].append({
-                'type': 'decorator',
-                'name': match.group(1),
-                'parameters': match.group(2) if match.group(2) else '',
-                'file': rel_path
-            })
-            
-        # Find type definitions
-        types = re.finditer(r'type\s+(\w+)\s*=\s*([^;]+)', content)
-        for match in types:
-            structure['patterns']['code_organization'].append({
-                'type': 'type_definition',
-                'name': match.group(1),
-                'definition': match.group(2).strip(),
-                'file': rel_path
-            }) 
 
     def _analyze_rust_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
         """Analyze Rust file content."""
