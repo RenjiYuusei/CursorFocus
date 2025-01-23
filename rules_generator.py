@@ -100,6 +100,21 @@ class RulesGenerator:
     VUE_COMPUTED_PATTERN = r'computed:\s*{[^}]*?(\w+)\s*\([^)]*\)\s*{[^}]*}'
     VUE_LIFECYCLE_PATTERN = r'(?:created|mounted|updated|destroyed)\s*\(\s*\)\s*{'
 
+    # Next.js specific patterns
+    NEXTJS_PAGE_PATTERN = r'(?:export\s+default\s+function|function)\s+(\w+)(?:Page)?\s*\([^)]*\)\s*{'
+    NEXTJS_API_PATTERN = r'export\s+(?:default\s+)?(?:async\s+)?function\s+(?:GET|POST|PUT|DELETE|PATCH)\s*\([^)]*\)\s*{'
+    NEXTJS_GETSTATICPROPS_PATTERN = r'export\s+(?:const\s+)?getStaticProps\s*=?\s*(?:async\s*)?\([^)]*\)\s*(?:=>)?\s*{'
+    NEXTJS_GETSTATICPATHS_PATTERN = r'export\s+(?:const\s+)?getStaticPaths\s*=?\s*(?:async\s*)?\([^)]*\)\s*(?:=>)?\s*{'
+    NEXTJS_GETSERVERSIDEPROPS_PATTERN = r'export\s+(?:const\s+)?getServerSideProps\s*=?\s*(?:async\s*)?\([^)]*\)\s*(?:=>)?\s*{'
+    NEXTJS_MIDDLEWARE_PATTERN = r'(?:export\s+)?(?:default\s+)?(?:function|const)\s+middleware\s*=?\s*(?:async\s*)?\([^)]*\)\s*(?:=>)?\s*{'
+    NEXTJS_LAYOUT_PATTERN = r'(?:export\s+default\s+function|function)\s+(\w+)?Layout\s*\([^)]*\)\s*{'
+    NEXTJS_ERROR_PATTERN = r'(?:export\s+default\s+function|function)\s+(\w+)?Error\s*\([^)]*\)\s*{'
+    NEXTJS_LOADING_PATTERN = r'(?:export\s+default\s+function|function)\s+(\w+)?Loading\s*\([^)]*\)\s*{'
+    NEXTJS_NOT_FOUND_PATTERN = r'(?:export\s+default\s+function|function)\s+(\w+)?NotFound\s*\([^)]*\)\s*{'
+    NEXTJS_ROUTE_PATTERN = r'(?:export\s+default\s+function|function)\s+(\w+)?Route\s*\([^)]*\)\s*{'
+    NEXTJS_CONFIG_PATTERN = r'(?:const|let|var)\s+(\w+Config)\s*=\s*{[^}]*}'
+    NEXTJS_HOOK_PATTERN = r'(?:export\s+)?(?:function|const)\s+(use\w+)\s*=?\s*(?:\([^)]*\))?\s*(?:=>)?\s*{'
+
     def __init__(self, project_path: str):
         self.project_path = project_path
         self.analyzer = RulesAnalyzer(project_path)
@@ -275,9 +290,17 @@ class RulesGenerator:
         if file_ext == '.py':
             self._analyze_python_file(content, rel_path, structure)
         elif file_ext == '.js':
-            self._analyze_js_file(content, rel_path, structure)
+            # Check if it's a Next.js file
+            if any(x in rel_path for x in ['pages/', 'app/', 'components/', 'middleware.js', 'next.config.js']):
+                self._analyze_nextjs_file(content, rel_path, structure)
+            else:
+                self._analyze_js_file(content, rel_path, structure)
         elif file_ext in ['.ts', '.tsx']:
-            self._analyze_ts_file(content, rel_path, structure)
+            # Check if it's a Next.js file
+            if any(x in rel_path for x in ['pages/', 'app/', 'components/', 'middleware.ts', 'next.config.ts']):
+                self._analyze_nextjs_file(content, rel_path, structure)
+            else:
+                self._analyze_ts_file(content, rel_path, structure)
         elif file_ext == '.vue':
             self._analyze_vue_file(content, rel_path, structure)
         elif file_ext == '.java':
@@ -1696,3 +1719,117 @@ Do not include technical metrics in the description."""
                     'hook': match.group(0),
                     'file': rel_path
                 })
+
+    def _analyze_nextjs_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Next.js file content."""
+        # Find pages/components
+        pages = re.finditer(self.NEXTJS_PAGE_PATTERN, content)
+        for match in pages:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'type': 'nextjs_page',
+                'file': rel_path
+            })
+        
+        # Find API routes
+        api_routes = re.finditer(self.NEXTJS_API_PATTERN, content)
+        for match in api_routes:
+            structure['patterns']['function_patterns'].append({
+                'type': 'nextjs_api_route',
+                'file': rel_path
+            })
+        
+        # Find getStaticProps
+        static_props = re.finditer(self.NEXTJS_GETSTATICPROPS_PATTERN, content)
+        for match in static_props:
+            structure['patterns']['function_patterns'].append({
+                'type': 'nextjs_getstaticprops',
+                'file': rel_path
+            })
+        
+        # Find getStaticPaths
+        static_paths = re.finditer(self.NEXTJS_GETSTATICPATHS_PATTERN, content)
+        for match in static_paths:
+            structure['patterns']['function_patterns'].append({
+                'type': 'nextjs_getstaticpaths',
+                'file': rel_path
+            })
+        
+        # Find getServerSideProps
+        server_props = re.finditer(self.NEXTJS_GETSERVERSIDEPROPS_PATTERN, content)
+        for match in server_props:
+            structure['patterns']['function_patterns'].append({
+                'type': 'nextjs_getserversideprops',
+                'file': rel_path
+            })
+        
+        # Find middleware
+        middleware = re.finditer(self.NEXTJS_MIDDLEWARE_PATTERN, content)
+        for match in middleware:
+            structure['patterns']['function_patterns'].append({
+                'type': 'nextjs_middleware',
+                'file': rel_path
+            })
+        
+        # Find layouts
+        layouts = re.finditer(self.NEXTJS_LAYOUT_PATTERN, content)
+        for match in layouts:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1) if match.group(1) else 'Layout',
+                'type': 'nextjs_layout',
+                'file': rel_path
+            })
+        
+        # Find error pages
+        errors = re.finditer(self.NEXTJS_ERROR_PATTERN, content)
+        for match in errors:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1) if match.group(1) else 'Error',
+                'type': 'nextjs_error',
+                'file': rel_path
+            })
+        
+        # Find loading pages
+        loading = re.finditer(self.NEXTJS_LOADING_PATTERN, content)
+        for match in loading:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1) if match.group(1) else 'Loading',
+                'type': 'nextjs_loading',
+                'file': rel_path
+            })
+        
+        # Find not found pages
+        not_found = re.finditer(self.NEXTJS_NOT_FOUND_PATTERN, content)
+        for match in not_found:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1) if match.group(1) else 'NotFound',
+                'type': 'nextjs_not_found',
+                'file': rel_path
+            })
+        
+        # Find route handlers
+        routes = re.finditer(self.NEXTJS_ROUTE_PATTERN, content)
+        for match in routes:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1) if match.group(1) else 'Route',
+                'type': 'nextjs_route',
+                'file': rel_path
+            })
+        
+        # Find Next.js config
+        configs = re.finditer(self.NEXTJS_CONFIG_PATTERN, content)
+        for match in configs:
+            structure['patterns']['code_organization'].append({
+                'type': 'nextjs_config',
+                'name': match.group(1),
+                'file': rel_path
+            })
+        
+        # Find custom hooks
+        hooks = re.finditer(self.NEXTJS_HOOK_PATTERN, content)
+        for match in hooks:
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(1),
+                'type': 'nextjs_hook',
+                'file': rel_path
+            })
