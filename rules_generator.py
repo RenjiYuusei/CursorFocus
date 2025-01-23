@@ -13,6 +13,7 @@ class RulesGenerator:
         'python': r'^(?:from|import)\s+([a-zA-Z0-9_\.]+)',
         'javascript': r'(?:import\s+.*?from\s+[\'"]([^\'\"]+)[\'"]|require\s*\([\'"]([^\'\"]+)[\'"]\))',
         'typescript': r'(?:import|require)\s+.*?[\'"]([^\'\"]+)[\'"]',
+        'vue': r'(?:import\s+.*?from\s+[\'"]([^\'\"]+)[\'"]|require\s*\([\'"]([^\'\"]+)[\'"]\))',
         'java': r'import\s+(?:static\s+)?([a-zA-Z0-9_\.\*]+);',
         'php': r'namespace\s+([a-zA-Z0-9_\\]+)',
         'csharp': r'using\s+(?:static\s+)?([a-zA-Z0-9_\.]+);',
@@ -37,6 +38,7 @@ class RulesGenerator:
         'python': r'class\s+(\w+)(?:\((.*?)\))?\s*:',
         'javascript': r'class\s+(\w+)(?:\s+extends\s+(\w+))?\s*{',
         'typescript': r'(?:class|const)\s+(\w+)(?:\s*(?:extends|implements)\s+([^{]+))?(?:\s*=\s*(?:styled|React\.memo|React\.forwardRef))?\s*[{<]',
+        'vue': r'(?:export\s+default\s*{[^}]*name:\s*[\'"](\w+)[\'"]|@Component\s*\(.*?\)\s*class\s+(\w+))',
         'java': r'(?:public\s+|private\s+|protected\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([^{]+))?',
         'php': r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?',
         'csharp': r'(?:public\s+|private\s+|protected\s+|internal\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s*:\s*([^{]+))?',
@@ -61,6 +63,7 @@ class RulesGenerator:
         'python': r'def\s+(\w+)\s*\((.*?)\)(?:\s*->\s*([^:]+))?\s*:',
         'javascript': r'(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))\s*\((.*?)\)',
         'typescript': r'(?:function|const)\s+(\w+)\s*(?:<[^>]+>)?\s*(?:=\s*)?(?:async\s*)?\((.*?)\)(?:\s*:\s*([^{=]+))?',
+        'vue': r'(?:methods:\s*{[^}]*(\w+)\s*\((.*?)\)|@(?:Watch|Prop|Emit)\s*\([^\)]*\)\s*(\w+)\s*\((.*?)\))',
         'java': r'(?:public|private|protected)?\s*(?:static\s+)?(?:final\s+)?(?:<[^>]+>\s+)?(\w+)\s+(\w+)\s*\((.*?)\)',
         'php': r'(?:public\s+|private\s+|protected\s+)?(?:static\s+)?function\s+(\w+)\s*\([^)]*\)',
         'csharp': r'(?:public|private|protected|internal)?\s*(?:static\s+)?(?:async\s+)?(?:virtual\s+)?(?:<[^>]+>\s+)?(\w+)\s+(\w+)\s*\((.*?)\)',
@@ -86,6 +89,16 @@ class RulesGenerator:
     ERROR_PATTERN = r'try\s*{[^}]*}\s*catch\s*\((\w+)\)'
     INTERFACE_PATTERN = r'(?:interface|type)\s+(\w+)(?:\s+extends\s+([^{]+))?'
     JSX_COMPONENT_PATTERN = r'<(\w+)(?:\s+[^>]*)?>'
+
+    # Vue specific patterns
+    VUE_COMPONENT_PATTERN = r'<template[^>]*>[\s\S]*?<\/template>'
+    VUE_SCRIPT_PATTERN = r'<script[^>]*>([\s\S]*?)<\/script>'
+    VUE_STYLE_PATTERN = r'<style[^>]*>([\s\S]*?)<\/style>'
+    VUE_PROP_PATTERN = r'@Prop\s*\(\s*(?:{[^}]*})?\s*\)\s*(\w+)\s*:'
+    VUE_EMIT_PATTERN = r'@Emit\s*\(\s*[\'"](\w+)[\'"]\s*\)'
+    VUE_WATCH_PATTERN = r'@Watch\s*\(\s*[\'"](\w+)[\'"]\s*\)'
+    VUE_COMPUTED_PATTERN = r'computed:\s*{[^}]*?(\w+)\s*\([^)]*\)\s*{[^}]*}'
+    VUE_LIFECYCLE_PATTERN = r'(?:created|mounted|updated|destroyed)\s*\(\s*\)\s*{'
 
     def __init__(self, project_path: str):
         self.project_path = project_path
@@ -183,7 +196,7 @@ class RulesGenerator:
                 
                 # Analyze code files
                 file_ext = os.path.splitext(file)[1].lower()
-                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush', '.perl', '.lua']:
+                if file_ext in ['.py', '.js', '.ts', '.tsx', '.vue', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush', '.perl', '.lua']:
                     structure['files'].append(rel_path)
                     dir_stats[rel_root]['code_files'] += 1
                     
@@ -237,6 +250,7 @@ class RulesGenerator:
             '.js': 'JavaScript',
             '.ts': 'TypeScript',
             '.tsx': 'TypeScript/React',
+            '.vue': 'Vue',
             '.kt': 'Kotlin',
             '.php': 'PHP',
             '.swift': 'Swift',
@@ -264,6 +278,8 @@ class RulesGenerator:
             self._analyze_js_file(content, rel_path, structure)
         elif file_ext in ['.ts', '.tsx']:
             self._analyze_ts_file(content, rel_path, structure)
+        elif file_ext == '.vue':
+            self._analyze_vue_file(content, rel_path, structure)
         elif file_ext == '.java':
             self._analyze_java_file(content, rel_path, structure)
         elif file_ext == '.php':
@@ -363,7 +379,7 @@ Description: {project_info.get('description', 'Generic Project')}
 Detailed Analysis:
 1. Code Metrics:
 - Total Files: {len(project_structure['files'])}
-- Code Files: {len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))])}
+- Code Files: {len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.vue', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))])}
 - Test Files: {len([f for f in project_structure['files'] if 'test' in f.lower()])}
 - Config Files: {len(project_structure['config_files'])}
 
@@ -452,7 +468,7 @@ Include both preferred patterns and patterns to avoid, based on actual code anal
                     'generated_at': self._get_timestamp(),
                     'project_stats': {
                         'total_files': len(project_structure['files']),
-                        'code_files': len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))]),
+                        'code_files': len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.vue', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))]),
                         'test_files': len([f for f in project_structure['files'] if 'test' in f.lower()]),
                         'config_files': len(project_structure['config_files'])
                     },
@@ -650,7 +666,7 @@ Do not include technical metrics in the description."""
                         "description": description,
                         "stats": {
                             "total_files": len(project_structure['files']),
-                            "code_files": len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))]),
+                            "code_files": len([f for f in project_structure['files'] if f.endswith(('.py', '.js', '.ts', '.tsx', '.vue', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))]),
                             "test_files": len([f for f in project_structure['files'] if 'test' in f.lower()]),
                             "config_files": len(project_structure['config_files']),
                             "analysis_coverage": {
@@ -678,7 +694,7 @@ Do not include technical metrics in the description."""
                                     "imports": len([imp for imp in project_structure['patterns']['imports'] if imp in f])
                                 }
                                 for f in project_structure['files']
-                                if f.endswith(('.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))
+                                if f.endswith(('.py', '.js', '.ts', '.tsx', '.vue', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.rb', '.go', '.zig', '.rush'))
                                 and not any(x in f.lower() for x in ['test', 'setup', 'config'])
                             ][:10]
                         }
@@ -1597,3 +1613,86 @@ Do not include technical metrics in the description."""
                 'to': match.group(2),
                 'file': rel_path
             })
+
+    def _analyze_vue_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
+        """Analyze Vue file content."""
+        # Extract template, script and style sections
+        template_match = re.search(self.VUE_COMPONENT_PATTERN, content)
+        script_match = re.search(self.VUE_SCRIPT_PATTERN, content)
+        style_match = re.search(self.VUE_STYLE_PATTERN, content)
+        
+        if script_match:
+            script_content = script_match.group(1)
+            
+            # Find imports
+            imports = re.findall(self.IMPORT_PATTERNS['vue'], script_content)
+            imports = [imp[0] or imp[1] for imp in imports]  # Flatten tuples from regex groups
+            structure['dependencies'].update({imp: True for imp in imports})
+            structure['patterns']['imports'].extend(imports)
+            
+            # Find component definitions
+            components = re.finditer(self.CLASS_PATTERNS['vue'], script_content)
+            for match in components:
+                component_name = match.group(1) or match.group(2)  # Get name from options API or class API
+                structure['patterns']['class_patterns'].append({
+                    'name': component_name,
+                    'type': 'vue_component',
+                    'file': rel_path
+                })
+            
+            # Find methods
+            methods = re.finditer(self.FUNCTION_PATTERNS['vue'], script_content)
+            for match in methods:
+                method_name = match.group(1) or match.group(3)  # Get name from methods or decorators
+                params = match.group(2) or match.group(4)
+                structure['patterns']['function_patterns'].append({
+                    'name': method_name,
+                    'parameters': params,
+                    'type': 'vue_method',
+                    'file': rel_path
+                })
+            
+            # Find props
+            props = re.finditer(self.VUE_PROP_PATTERN, script_content)
+            for match in props:
+                structure['patterns']['variable_patterns'].append({
+                    'name': match.group(1),
+                    'type': 'vue_prop',
+                    'file': rel_path
+                })
+            
+            # Find emits
+            emits = re.finditer(self.VUE_EMIT_PATTERN, script_content)
+            for match in emits:
+                structure['patterns']['code_organization'].append({
+                    'type': 'vue_emit',
+                    'name': match.group(1),
+                    'file': rel_path
+                })
+            
+            # Find watchers
+            watchers = re.finditer(self.VUE_WATCH_PATTERN, script_content)
+            for match in watchers:
+                structure['patterns']['code_organization'].append({
+                    'type': 'vue_watch',
+                    'name': match.group(1),
+                    'file': rel_path
+                })
+            
+            # Find computed properties
+            computed = re.finditer(self.VUE_COMPUTED_PATTERN, script_content)
+            for match in computed:
+                structure['patterns']['function_patterns'].append({
+                    'name': match.group(1),
+                    'type': 'vue_computed',
+                    'file': rel_path
+                })
+            
+            # Find lifecycle hooks
+            lifecycle = re.finditer(self.VUE_LIFECYCLE_PATTERN, script_content)
+            for match in lifecycle:
+                structure['patterns']['code_organization'].append({
+                    'type': 'vue_lifecycle',
+                    'hook': match.group(0),
+                    'file': rel_path
+                })
