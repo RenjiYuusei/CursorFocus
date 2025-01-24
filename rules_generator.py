@@ -222,29 +222,95 @@ class RulesGenerator:
 
     def _analyze_file_by_type(self, file_ext: str, content: str, rel_path: str, structure: Dict[str, Any], dir_stats: Dict[str, Any]):
         """Analyze file based on its type and update both structure and directory statistics."""
-        # Language specific analysis
-        if file_ext == '.py':
-            self._analyze_python_file(content, rel_path, structure)
-        elif file_ext == '.js':
-            self._analyze_js_file(content, rel_path, structure)
-        elif file_ext in ['.ts', '.tsx']:
-            self._analyze_ts_file(content, rel_path, structure)
-        elif file_ext == '.java':
-            self._analyze_java_file(content, rel_path, structure)
-        elif file_ext == '.php':
-            self._analyze_php_file(content, rel_path, structure)
-        elif file_ext in ['.cs', '.csx']:
-            self._analyze_csharp_file(content, rel_path, structure)
-        elif file_ext in ['.cpp', '.hpp', '.cc', '.cxx', '.h++']:
-            self._analyze_cpp_file(content, rel_path, structure)
-        elif file_ext in ['.c', '.h']:
-            self._analyze_c_file(content, rel_path, structure)
-        elif file_ext == '.kt':
-            self._analyze_kotlin_file(content, rel_path, structure)
-        elif file_ext == '.swift':
-            self._analyze_swift_file(content, rel_path, structure)
-        elif file_ext == '.rs':
-            self._analyze_rust_file(content, rel_path, structure)
+        # Get language from extension
+        lang = self._get_language_from_ext(file_ext).lower()
+        if lang == 'unknown':
+            return
+
+        # Find imports
+        if lang in self.IMPORT_PATTERNS:
+            imports = re.findall(self.IMPORT_PATTERNS[lang], content)
+            # Handle tuple results from regex groups
+            if isinstance(imports[0], tuple) if imports else False:
+                imports = [imp[0] or imp[1] for imp in imports]  # Flatten tuples
+            structure['dependencies'].update({imp: True for imp in imports})
+            structure['patterns']['imports'].extend(imports)
+
+        # Find classes
+        if lang in self.CLASS_PATTERNS:
+            classes = re.finditer(self.CLASS_PATTERNS[lang], content)
+            for match in classes:
+                class_info = {
+                    'name': match.group(1),
+                    'file': rel_path,
+                    'type': 'class'
+                }
+                
+                # Add inheritance info if available
+                if match.lastindex > 1 and match.group(2):
+                    class_info['inheritance'] = match.group(2).strip()
+                
+                # Add interfaces info for some languages
+                if match.lastindex > 2 and match.group(3):
+                    class_info['interfaces'] = match.group(3).strip()
+                
+                structure['patterns']['class_patterns'].append(class_info)
+
+        # Find functions/methods
+        if lang in self.FUNCTION_PATTERNS:
+            functions = re.finditer(self.FUNCTION_PATTERNS[lang], content)
+            for match in functions:
+                func_info = {
+                    'file': rel_path
+                }
+                
+                # Handle different function pattern groups
+                if lang in ['java', 'csharp']:
+                    func_info.update({
+                        'return_type': match.group(1),
+                        'name': match.group(2),
+                        'parameters': match.group(3) if match.lastindex > 2 else ''
+                    })
+                else:
+                    func_info.update({
+                        'name': match.group(1),
+                        'parameters': match.group(2) if match.lastindex > 1 else '',
+                        'return_type': match.group(3).strip() if match.lastindex > 2 and match.group(3) else None
+                    })
+                
+                structure['patterns']['function_patterns'].append(func_info)
+
+        # Find additional patterns based on language
+        if lang in ['typescript', 'javascript']:
+            # Find JSX components
+            if file_ext.endswith('x'):  # For .jsx and .tsx files
+                components = re.finditer(self.JSX_COMPONENT_PATTERN, content)
+                for match in components:
+                    component_name = match.group(1)
+                    if component_name[0].isupper():  # Custom components start with uppercase
+                        structure['patterns']['class_patterns'].append({
+                            'name': component_name,
+                            'type': 'jsx_component',
+                            'file': rel_path
+                        })
+            
+            # Find interfaces
+            interfaces = re.finditer(self.INTERFACE_PATTERN, content)
+            for match in interfaces:
+                structure['patterns']['class_patterns'].append({
+                    'name': match.group(1),
+                    'type': 'interface',
+                    'inheritance': match.group(2).strip() if match.lastindex > 1 and match.group(2) else '',
+                    'file': rel_path
+                })
+
+        # Find error handling patterns
+        error_matches = re.finditer(self.ERROR_PATTERN, content)
+        for match in error_matches:
+            structure['patterns']['error_patterns'].append({
+                'exception_var': match.group(1),
+                'file': rel_path
+            })
 
         # Update directory statistics
         dir_stats['patterns']['classes'] += len([p for p in structure['patterns']['class_patterns'] if p['file'] == rel_path])
@@ -619,749 +685,3 @@ Do not include technical metrics in the description."""
         except Exception as e:
             print(f"❌ Failed to generate rules: {e}")
             raise 
-
-    def _analyze_python_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Python file content."""
-        # Find imports and dependencies
-        imports = re.findall(self.IMPORT_PATTERNS['python'], content, re.MULTILINE)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes and their patterns
-        class_patterns = re.finditer(self.CLASS_PATTERNS['python'], content)
-        for match in class_patterns:
-            class_name = match.group(1)
-            inheritance = match.group(2) if match.group(2) else ''
-            structure['patterns']['class_patterns'].append({
-                'name': class_name,
-                'inheritance': inheritance,
-                'file': rel_path
-            })
-        
-        # Find and analyze functions
-        function_patterns = re.finditer(self.FUNCTION_PATTERNS['python'], content)
-        for match in function_patterns:
-            func_name = match.group(1)
-            params = match.group(2)
-            return_type = match.group(3) if match.group(3) else None
-            structure['patterns']['function_patterns'].append({
-                'name': func_name,
-                'parameters': params,
-                'return_type': return_type,
-                'file': rel_path
-            })
-
-    def _analyze_js_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze JavaScript file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['javascript'], content)
-        imports = [imp[0] or imp[1] for imp in imports]  # Flatten tuples from regex groups
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes
-        classes = re.finditer(self.CLASS_PATTERNS['javascript'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2) if match.group(2) else '',
-                'file': rel_path
-            })
-        
-        # Find functions (including arrow functions)
-        functions = re.finditer(self.FUNCTION_PATTERNS['javascript'], content)
-        for match in functions:
-            name = match.group(1) or match.group(2)  # Get name from either function or variable
-            structure['patterns']['function_patterns'].append({
-                'name': name,
-                'parameters': match.group(3),
-                'file': rel_path
-            })
-            
-        # Find object methods
-        methods = re.finditer(self.METHOD_PATTERN, content)
-        for match in methods:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'type': 'method',
-                'file': rel_path
-            })
-            
-        # Find variables and constants
-        variables = re.finditer(self.VARIABLE_PATTERN, content)
-        for match in variables:
-            structure['patterns']['variable_patterns'].append({
-                'name': match.group(1),
-                'value': match.group(2).strip(),
-                'file': rel_path
-            })
-            
-        # Find error handling patterns
-        try_blocks = re.finditer(self.ERROR_PATTERN, content)
-        for match in try_blocks:
-            structure['patterns']['error_patterns'].append({
-                'exception_var': match.group(1),
-                'file': rel_path
-            })
-            
-        # Find async/await patterns
-        if 'async' in content:
-            structure['patterns']['performance_patterns'].append({
-                'file': rel_path,
-                'has_async': True
-            })
-
-    def _analyze_kotlin_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Kotlin file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['kotlin'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes
-        classes = re.finditer(self.CLASS_PATTERNS['kotlin'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2).strip() if match.group(2) else '',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['kotlin'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-
-    def _analyze_php_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze PHP file content."""
-        try:
-            # Find imports/requires/namespaces
-            imports = []
-            lines = content.split('\n')
-            
-            # Process each line for imports/namespaces
-            for line in lines:
-                matches = re.finditer(r'(?:namespace\s+([a-zA-Z0-9_\\]+))|(?:use\s+(?:\\)?([a-zA-Z0-9_\\]+)(?:\s+as\s+[a-zA-Z0-9_]+)?)', line)
-                for match in matches:
-                    import_value = next((g for g in match.groups() if g is not None), None)
-                    if import_value and import_value.strip():
-                        imports.append(import_value.strip())
-            
-            if imports:
-                structure['dependencies'].update({imp: True for imp in imports})
-                structure['patterns']['imports'].extend(imports)
-            
-            # Find classes
-            classes = []
-            class_pattern = r'(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(?:\\)?[a-zA-Z0-9_\\]+)?(?:\s+implements\s+(?:\\)?[a-zA-Z0-9_\\]+(?:\s*,\s*(?:\\)?[a-zA-Z0-9_\\]+)*)?',
-            
-            for i, line in enumerate(lines, 1):
-                matches = re.finditer(class_pattern, line)
-                for match in matches:
-                    class_info = {
-                        'name': match.group(1),
-                        'file': rel_path,
-                        'line': i
-                    }
-                    classes.append(class_info)
-            
-            structure['patterns']['class_patterns'].extend(classes)
-            
-            # Find functions
-            functions = []
-            function_pattern = r'(?:public\s+|private\s+|protected\s+)?(?:static\s+)?function\s+(\w+)\s*\([^)]*\)'
-            
-            for i, line in enumerate(lines, 1):
-                matches = re.finditer(function_pattern, line)
-                for match in matches:
-                    func_info = {
-                        'name': match.group(1),
-                        'file': rel_path,
-                        'line': i
-                    }
-                    functions.append(func_info)
-            
-            structure['patterns']['function_patterns'].extend(functions)
-                    
-        except Exception as e:
-            pass
-
-    def _analyze_swift_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Swift file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['swift'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes and protocols
-        classes = re.finditer(self.CLASS_PATTERNS['swift'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2).strip() if match.group(2) else '',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['swift'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-
-    def _analyze_ts_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze TypeScript/TSX file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['typescript'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find interfaces and types
-        interfaces = re.finditer(self.INTERFACE_PATTERN, content)
-        for match in interfaces:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 'interface/type',
-                'inheritance': match.group(2).strip() if match.group(2) else '',
-                'file': rel_path
-            })
-        
-        # Find classes and components
-        classes = re.finditer(self.CLASS_PATTERNS['typescript'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 'class/component',
-                'inheritance': match.group(2).strip() if match.group(2) else '',
-                'file': rel_path
-            })
-        
-        # Find functions and hooks
-        functions = re.finditer(self.FUNCTION_PATTERNS['typescript'], content)
-        for match in functions:
-            name = match.group(1)
-            is_hook = name.startswith('use') and name[3].isupper()
-            structure['patterns']['function_patterns'].append({
-                'name': name,
-                'type': 'hook' if is_hook else 'function',
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-        
-        # Find JSX components in TSX files
-        if rel_path.endswith('.tsx'):
-            components = re.finditer(self.JSX_COMPONENT_PATTERN, content)
-            for match in components:
-                component_name = match.group(1)
-                if component_name[0].isupper():  # Custom components start with uppercase
-                    structure['patterns']['class_patterns'].append({
-                        'name': component_name,
-                        'type': 'jsx_component',
-                        'file': rel_path
-                    }) 
-
-    def _analyze_cpp_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze C++ file content."""
-        # Find includes
-        includes = re.findall(self.IMPORT_PATTERNS['cpp'], content)
-        structure['dependencies'].update({inc: True for inc in includes})
-        structure['patterns']['imports'].extend(includes)
-        
-        # Find classes and structs
-        classes = re.finditer(self.CLASS_PATTERNS['cpp'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2) if match.group(2) else '',
-                'file': rel_path
-            })
-        
-        # Find functions and methods
-        functions = re.finditer(self.FUNCTION_PATTERNS['cpp'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find templates
-        templates = re.finditer(r'template\s*<([^>]+)>', content)
-        for match in templates:
-            structure['patterns']['code_organization'].append({
-                'type': 'template',
-                'parameters': match.group(1),
-                'file': rel_path
-            })
-            
-        # Find namespaces
-        namespaces = re.finditer(r'namespace\s+(\w+)\s*{', content)
-        for match in namespaces:
-            structure['patterns']['code_organization'].append({
-                'type': 'namespace',
-                'name': match.group(1),
-                'file': rel_path
-            })
-
-    def _analyze_c_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze C file content."""
-        # Find includes
-        includes = re.findall(self.IMPORT_PATTERNS['c'], content)
-        structure['dependencies'].update({inc: True for inc in includes})
-        structure['patterns']['imports'].extend(includes)
-        
-        # Find structs and unions
-        structs = re.finditer(self.CLASS_PATTERNS['c'], content)
-        for match in structs:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 'struct/union',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['c'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find macros
-        macros = re.finditer(r'#define\s+(\w+)(?:\(([^)]*)\))?\s+(.+)', content)
-        for match in macros:
-            structure['patterns']['code_organization'].append({
-                'type': 'macro',
-                'name': match.group(1),
-                'parameters': match.group(2) if match.group(2) else '',
-                'value': match.group(3),
-                'file': rel_path
-            })
-            
-        # Find typedefs
-        typedefs = re.finditer(r'typedef\s+(?:struct|enum|union)?\s*(\w+)\s+(\w+);', content)
-        for match in typedefs:
-            structure['patterns']['code_organization'].append({
-                'type': 'typedef',
-                'original_type': match.group(1),
-                'new_type': match.group(2),
-                'file': rel_path
-            }) 
-
-    def _analyze_java_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Java file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['java'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes and interfaces
-        classes = re.finditer(self.CLASS_PATTERNS['java'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': match.group(2) if match.group(2) else '',
-                'interfaces': match.group(3).strip() if match.group(3) else '',
-                'file': rel_path
-            })
-        
-        # Find methods
-        methods = re.finditer(self.FUNCTION_PATTERNS['java'], content)
-        for match in methods:
-            structure['patterns']['function_patterns'].append({
-                'return_type': match.group(1),
-                'name': match.group(2),
-                'parameters': match.group(3),
-                'file': rel_path
-            })
-            
-        # Find annotations
-        annotations = re.finditer(r'@(\w+)(?:\((.*?)\))?', content)
-        for match in annotations:
-            structure['patterns']['code_organization'].append({
-                'type': 'annotation',
-                'name': match.group(1),
-                'parameters': match.group(2) if match.group(2) else '',
-                'file': rel_path
-            })
-
-    def _analyze_csharp_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze C# file content."""
-        # Find using statements
-        imports = re.findall(self.IMPORT_PATTERNS['csharp'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes and interfaces
-        classes = re.finditer(self.CLASS_PATTERNS['csharp'], content)
-        for match in classes:
-            inheritance = match.group(2)
-            if inheritance:
-                inheritance_parts = [p.strip() for p in inheritance.split(',')]
-                base_class = inheritance_parts[0] if inheritance_parts else ''
-                interfaces = inheritance_parts[1:] if len(inheritance_parts) > 1 else []
-            else:
-                base_class = ''
-                interfaces = []
-                
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'inheritance': base_class,
-                'interfaces': interfaces,
-                'file': rel_path
-            })
-        
-        # Find methods
-        methods = re.finditer(self.FUNCTION_PATTERNS['csharp'], content)
-        for match in methods:
-            structure['patterns']['function_patterns'].append({
-                'return_type': match.group(1),
-                'name': match.group(2),
-                'parameters': match.group(3),
-                'file': rel_path
-            })
-            
-        # Find properties
-        properties = re.finditer(r'(?:public|private|protected|internal)?\s*(\w+)\s+(\w+)\s*{\s*get;\s*(?:private\s*)?set;\s*}', content)
-        for match in properties:
-            structure['patterns']['code_organization'].append({
-                'type': 'property',
-                'type_name': match.group(1),
-                'name': match.group(2),
-                'file': rel_path
-            })
-
-    def _analyze_rust_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Rust file content."""
-        # Find imports/uses
-        imports = re.findall(self.IMPORT_PATTERNS['rust'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find structs, enums, traits and impls
-        types = re.finditer(self.CLASS_PATTERNS['rust'], content)
-        for match in types:
-            type_name = match.group(1)
-            impl_for = match.group(2) if match.group(2) else ''
-            structure['patterns']['class_patterns'].append({
-                'name': type_name,
-                'impl_for': impl_for,
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['rust'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-            
-        # Find macros
-        macros = re.finditer(r'macro_rules!\s+(\w+)\s*{', content)
-        for match in macros:
-            structure['patterns']['code_organization'].append({
-                'type': 'macro',
-                'name': match.group(1),
-                'file': rel_path
-            })
-
-    def _analyze_scala_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Scala file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['scala'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes, objects and traits
-        types = re.finditer(self.CLASS_PATTERNS['scala'], content)
-        for match in types:
-            type_name = match.group(1)
-            inheritance = match.group(2).strip() if match.group(2) else ''
-            structure['patterns']['class_patterns'].append({
-                'name': type_name,
-                'inheritance': inheritance,
-                'file': rel_path
-            })
-        
-        # Find functions and values
-        functions = re.finditer(self.FUNCTION_PATTERNS['scala'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2) if match.group(2) else '',
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-            
-        # Find case classes
-        case_classes = re.finditer(r'case\s+class\s+(\w+)(?:\[.*?\])?\s*\((.*?)\)', content)
-        for match in case_classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 'case_class',
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-
-    def _analyze_dart_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Dart file content."""
-        # Find imports
-        imports = re.findall(self.IMPORT_PATTERNS['dart'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find classes and mixins
-        classes = re.finditer(self.CLASS_PATTERNS['dart'], content)
-        for match in classes:
-            class_name = match.group(1)
-            inheritance = match.group(2).strip() if match.group(2) else ''
-            structure['patterns']['class_patterns'].append({
-                'name': class_name,
-                'inheritance': inheritance,
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['dart'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find widgets (Flutter)
-        widgets = re.finditer(r'class\s+(\w+)\s+extends\s+(?:StatelessWidget|StatefulWidget)', content)
-        for match in widgets:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 'widget',
-                'file': rel_path
-            })
-
-    def _analyze_r_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze R file content."""
-        # Find imports/libraries
-        imports = re.findall(self.IMPORT_PATTERNS['r'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find S4 classes
-        classes = re.finditer(self.CLASS_PATTERNS['r'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 's4_class',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['r'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find pipes
-        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
-        for match in pipes:
-            structure['patterns']['code_organization'].append({
-                'type': 'pipe',
-                'from': match.group(1),
-                'to': match.group(2),
-                'file': rel_path
-            })
-
-    def _analyze_julia_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Julia file content."""
-        # Find imports/using
-        imports = re.findall(self.IMPORT_PATTERNS['julia'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find types
-        types = re.finditer(self.CLASS_PATTERNS['julia'], content)
-        for match in types:
-            type_name = match.group(1)
-            supertype = match.group(2).strip() if match.group(2) else ''
-            structure['patterns']['class_patterns'].append({
-                'name': type_name,
-                'supertype': supertype,
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['julia'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'return_type': match.group(3).strip() if match.group(3) else None,
-                'file': rel_path
-            })
-            
-        # Find macros
-        macros = re.finditer(r'macro\s+(\w+)\s*\((.*?)\)', content)
-        for match in macros:
-            structure['patterns']['code_organization'].append({
-                'type': 'macro',
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            }) 
-
-    def _analyze_perl_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Perl file content."""
-        # Find imports/libraries
-        imports = re.findall(self.IMPORT_PATTERNS['perl'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find S4 classes
-        classes = re.finditer(self.CLASS_PATTERNS['perl'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 's4_class',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['perl'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find pipes
-        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
-        for match in pipes:
-            structure['patterns']['code_organization'].append({
-                'type': 'pipe',
-                'from': match.group(1),
-                'to': match.group(2),
-                'file': rel_path
-            })
-
-    def _analyze_matlab_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze MATLAB file content."""
-        # Find imports/libraries
-        imports = re.findall(self.IMPORT_PATTERNS['matlab'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find S4 classes
-        classes = re.finditer(self.CLASS_PATTERNS['matlab'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 's4_class',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['matlab'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find pipes
-        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
-        for match in pipes:
-            structure['patterns']['code_organization'].append({
-                'type': 'pipe',
-                'from': match.group(1),
-                'to': match.group(2),
-                'file': rel_path
-            })
-
-    def _analyze_groovy_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Groovy file content."""
-        # Find imports/libraries
-        imports = re.findall(self.IMPORT_PATTERNS['groovy'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find S4 classes
-        classes = re.finditer(self.CLASS_PATTERNS['groovy'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 's4_class',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['groovy'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find pipes
-        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
-        for match in pipes:
-            structure['patterns']['code_organization'].append({
-                'type': 'pipe',
-                'from': match.group(1),
-                'to': match.group(2),
-                'file': rel_path
-            })
-
-    def _analyze_lua_file(self, content: str, rel_path: str, structure: Dict[str, Any]):
-        """Analyze Lua file content."""
-        # Find imports/libraries
-        imports = re.findall(self.IMPORT_PATTERNS['lua'], content)
-        structure['dependencies'].update({imp: True for imp in imports})
-        structure['patterns']['imports'].extend(imports)
-        
-        # Find S4 classes
-        classes = re.finditer(self.CLASS_PATTERNS['lua'], content)
-        for match in classes:
-            structure['patterns']['class_patterns'].append({
-                'name': match.group(1),
-                'type': 's4_class',
-                'file': rel_path
-            })
-        
-        # Find functions
-        functions = re.finditer(self.FUNCTION_PATTERNS['lua'], content)
-        for match in functions:
-            structure['patterns']['function_patterns'].append({
-                'name': match.group(1),
-                'parameters': match.group(2),
-                'file': rel_path
-            })
-            
-        # Find pipes
-        pipes = re.finditer(r'([^%\s]+)\s*%>%\s*([^%\s]+)', content)
-        for match in pipes:
-            structure['patterns']['code_organization'].append({
-                'type': 'pipe',
-                'from': match.group(1),
-                'to': match.group(2),
-                'file': rel_path
-            }) 
