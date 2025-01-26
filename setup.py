@@ -13,6 +13,11 @@ def setup_cursorfocus():
     parser.add_argument('--list', '-l', action='store_true', help='List all configured projects')
     parser.add_argument('--remove', '-r', nargs='+', help='Remove projects by name/index, or use "all" to remove all projects')
     parser.add_argument('--scan', '-s', nargs='?', const='.', help='Scan directory for projects')
+    parser.add_argument('--update-interval', '-u', type=int, help='Update interval in seconds for project(s)')
+    parser.add_argument('--max-depth', '-d', type=int, help='Maximum directory depth for scanning')
+    parser.add_argument('--info', '-i', help='Show detailed information about a project by name/index')
+    parser.add_argument('--export', '-e', help='Export configuration to a file')
+    parser.add_argument('--import', '-m', dest='import_file', help='Import configuration from a file')
     
     args = parser.parse_args()
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,6 +26,19 @@ def setup_cursorfocus():
     
     if 'projects' not in config:
         config['projects'] = []
+
+    if args.import_file:
+        import_config(config, args.import_file)
+        save_config(config_path, config)
+        return
+
+    if args.export:
+        export_config(config, args.export)
+        return
+
+    if args.info:
+        show_project_info(config['projects'], args.info)
+        return
 
     if args.list:
         list_projects(config['projects'])
@@ -108,8 +126,8 @@ def setup_cursorfocus():
             project_config = {
                 'name': project_name,
                 'project_path': abs_path,
-                'update_interval': 60,
-                'max_depth': 3
+                'update_interval': args.update_interval if args.update_interval else 60,
+                'max_depth': args.max_depth if args.max_depth else 3
             }
             valid_projects.append(project_config)
             
@@ -239,7 +257,7 @@ def get_project_name(project_path):
     
     # Clean up common suffixes
     name = base_name.lower()
-    for suffix in ['-main', '-master', '-dev', '-development', '.git']:
+    for suffix in ['-main', '-master', '-dev', '-development', '.git', '-project']:
         if name.endswith(suffix):
             base_name = base_name[:-len(suffix)]
             break
@@ -247,6 +265,82 @@ def get_project_name(project_path):
     # Convert to title case and replace special characters
     words = base_name.replace('-', ' ').replace('_', ' ').split()
     return ' '.join(word.capitalize() for word in words)
+
+def show_project_info(projects, target):
+    """Display detailed information about a specific project."""
+    if not projects:
+        print("\n⚠️ No projects configured.")
+        return
+
+    project = None
+    try:
+        # Try to use target as index
+        idx = int(target) - 1
+        if 0 <= idx < len(projects):
+            project = projects[idx]
+    except ValueError:
+        # Use target as name
+        project = next((p for p in projects if p['name'].lower() == target.lower()), None)
+
+    if not project:
+        print(f"\n❌ Project not found: {target}")
+        return
+
+    print(f"\n📁 Project Details: {project['name']}")
+    print(f"  Path: {project['project_path']}")
+    print(f"  Update Interval: {project['update_interval']} seconds")
+    print(f"  Max Depth: {project['max_depth']} levels")
+    
+    # Show additional project info if available
+    project_type = detect_project_type(project['project_path'])
+    if project_type:
+        print(f"  Type: {project_type['type']}")
+        if project_type.get('language'): print(f"  Language: {project_type['language']}")
+        if project_type.get('framework'): print(f"  Framework: {project_type['framework']}")
+
+def export_config(config, export_path):
+    """Export configuration to a file."""
+    try:
+        with open(export_path, 'w') as f:
+            json.dump(config, f, indent=4)
+        print(f"\n✅ Configuration exported to: {export_path}")
+    except Exception as e:
+        print(f"\n❌ Failed to export configuration: {str(e)}")
+
+def import_config(config, import_path):
+    """Import configuration from a file."""
+    try:
+        with open(import_path, 'r') as f:
+            imported = json.load(f)
+            
+        if 'projects' in imported:
+            # Validate and update paths
+            valid_projects = []
+            for project in imported['projects']:
+                if all(key in project for key in ['name', 'project_path', 'update_interval', 'max_depth']):
+                    if os.path.exists(project['project_path']):
+                        valid_projects.append(project)
+                    else:
+                        print(f"\n⚠️ Skipping project with invalid path: {project['name']}")
+            
+            config['projects'] = valid_projects
+            print(f"\n✅ Imported {len(valid_projects)} projects")
+        
+        # Import other settings
+        for key in ['ignored_directories', 'ignored_files']:
+            if key in imported:
+                config[key] = imported[key]
+                
+    except Exception as e:
+        print(f"\n❌ Failed to import configuration: {str(e)}")
+
+def detect_project_type(project_path):
+    """Detect project type using project_detector."""
+    try:
+        projects = scan_for_projects(project_path, 1)
+        return projects[0] if projects else None
+    except:
+        return None
 
 if __name__ == '__main__':
     setup_cursorfocus() 
