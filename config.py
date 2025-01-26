@@ -59,12 +59,6 @@ def get_default_config():
             ".hpp": 300,   # C++ Header
             ".cs": 400,    # C#
             ".csx": 400,   # C# Script
-            ".rb": 300,    # Ruby
-            ".go": 400,    # Go
-            ".zig": 300,   # Zig
-            ".rush": 300,  # Rush
-            ".perl": 400,  # Perl
-            ".lua": 300,   # Lua
             "default": 300
         }
     }
@@ -96,12 +90,6 @@ CODE_EXTENSIONS = {
     '.hpp',   # C++ Header
     '.cs',    # C#
     '.csx',   # C# Script
-    '.rb',    # Ruby
-    '.go',    # Go
-    '.zig',   # Zig
-    '.rush',  # Rush
-    '.perl',  # Perl
-    '.lua'    # Lua
 }
 
 # Regex patterns for function detection
@@ -129,25 +117,7 @@ FUNCTION_PATTERNS = {
     'kotlin_function': r'(?:fun\s+)?([a-zA-Z_]\w*)\s*(?:<[^>]+>)?\s*\([^)]*\)(?:\s*:\s*[^{]+)?\s*{',
     
     # Swift
-    'swift_function': r'(?:func\s+)([a-zA-Z_]\w*)\s*(?:<[^>]+>)?\s*\([^)]*\)(?:\s*->\s*[^{]+)?\s*{',
-    
-    # Go
-    'go_function': r'func\s+([a-zA-Z_]\w*)\s*\([^)]*\)(?:\s*\([^)]*\))?\s*{',
-    
-    # Ruby    'ruby_function': r'(?:def\s+)([a-zA-Z_]\w*[?!]?)',
-    
-    # Lua
-    'lua_function': r'(?:local\s+)?function\s+([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)\s*\([^)]*\)',
-    
-    # Perl
-    'perl_function': r'sub\s+([a-zA-Z_]\w*)\s*{',
-
-    
-    # Zig
-    'zig_function': r'(?:pub\s+)?fn\s+([a-zA-Z_]\w*)\s*\(',
-    
-    # Rush
-    'rush_function': r'(?:pub\s+)?fn\s+([a-zA-Z_]\w*)\s*\('
+    'swift_function': r'(?:func\s+)([a-zA-Z_]\w*)\s*(?:<[^>]+>)?\s*\([^)]*\)(?:\s*->\s*[^{]+)?\s*{'
 }
 
 # Keywords that should not be treated as function names

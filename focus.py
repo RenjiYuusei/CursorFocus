@@ -1,115 +1,13 @@
 import os
 import time
 from datetime import datetime
-from config import load_config
+from config import load_config, get_default_config
 from content_generator import generate_focus_content
 from rules_analyzer import RulesAnalyzer
 from rules_generator import RulesGenerator
 from rules_watcher import ProjectWatcherManager
 import logging
 from auto_updater import AutoUpdater
-
-def get_default_config():
-    """Get default configuration with parent directory as project path."""
-    return {
-        'project_path': os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
-        'update_interval': 60,
-        'max_depth': 3,
-        'ignored_directories': [
-            '__pycache__',
-            'node_modules',
-            'venv',
-            '.git',
-            '.idea',
-            '.vscode',
-            'dist',
-            'build',
-            'CursorFocus'
-        ],
-        'ignored_files': [
-            '.DS_Store',
-            '*.pyc',
-            '*.pyo'
-        ],
-        'binary_extensions': [
-            '.png',
-            '.jpg',
-            '.jpeg',
-            '.gif',
-            '.ico',
-            '.pdf',
-            '.exe',
-            '.bin'
-        ],
-        'file_length_standards': {
-            '.js': 300,
-            '.jsx': 250,
-            '.ts': 300,
-            '.tsx': 250,
-            '.py': 400,
-            '.css': 400,
-            '.scss': 400,
-            '.less': 400,
-            '.sass': 400,
-            '.html': 300,
-            '.vue': 250,
-            '.svelte': 250,
-            '.json': 100,
-            '.yaml': 100,
-            '.yml': 100,
-            '.toml': 100,
-            '.md': 500,
-            '.rst': 500,
-            '.php': 400,
-            '.phtml': 300,
-            '.ctp': 300,
-            '.swift': 300,
-            '.kt': 300,
-            'default': 300
-        },
-        'file_length_thresholds': {
-            'warning': 1.0,
-            'critical': 1.5,
-            'severe': 2.0
-        },
-        'project_types': {
-            'chrome_extension': {
-                'indicators': ['manifest.json'],
-                'required_files': [],
-                'description': 'Chrome Extension'
-            },
-            'node_js': {
-                'indicators': ['package.json'],
-                'required_files': [],
-                'description': 'Node.js Project'
-            },
-            'python': {
-                'indicators': ['setup.py', 'pyproject.toml'],
-                'required_files': [],
-                'description': 'Python Project'
-            },
-            'react': {
-                'indicators': [],
-                'required_files': ['src/App.js', 'src/index.js'],
-                'description': 'React Application'
-            },
-            'php': {
-                'indicators': ['composer.json', 'index.php'],
-                'required_files': [],
-                'description': 'PHP Project'
-            },
-            'laravel': {
-                'indicators': ['artisan'],
-                'required_files': [],
-                'description': 'Laravel Project'
-            },
-            'wordpress': {
-                'indicators': ['wp-config.php'],
-                'required_files': [],
-                'description': 'WordPress Project'
-            }
-        }
-    }
 
 def retry_generate_rules(project_path, project_name, max_retries=5):
     """Retry generating rules file with user confirmation."""
@@ -245,13 +143,13 @@ def main():
 
     config = load_config()
     if not config:
-        print("No config.json found")
+        print("No config.json found, using default configuration")
         config = get_default_config()
 
     if 'projects' not in config:
         config['projects'] = [{
             'name': 'Default Project',
-            'project_path': config['project_path'],
+            'project_path': config.get('project_path', os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))),
             'update_interval': config.get('update_interval', 60),
             'max_depth': config.get('max_depth', 3)
         }]
