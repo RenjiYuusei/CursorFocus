@@ -11,7 +11,7 @@ class RulesWatcher(FileSystemEventHandler):
         self.project_path = project_path
         self.project_id = project_id
         self.rules_generator = RulesGenerator(project_path)
-        self.last_update = 0
+        self.last_update = 0  # type: ignore
         self.update_delay = 5  # Seconds to wait before updating to avoid multiple updates
         self.auto_update = False  # Disable auto-update by default
 
@@ -78,16 +78,7 @@ class ProjectWatcherManager:
         self.watchers: Dict[str, RulesWatcher] = {}
 
     def add_project(self, project_path: str, project_id: str = None) -> str:
-        """Add a new project to watch.
-        
-        Args:
-            project_path: Path to the project directory
-            project_id: Optional unique identifier for the project. If not provided,
-                       the absolute path will be used as the ID.
-                       
-        Returns:
-            The project ID used for the watcher
-        """
+        """Add a new project to watch."""
         if not os.path.exists(project_path):
             raise ValueError(f"Project path does not exist: {project_path}")
             
@@ -141,9 +132,6 @@ class ProjectWatcherManager:
 
 def start_watching(project_paths: str | list[str]):
     """Start watching one or multiple project directories for changes.
-    
-    Args:
-        project_paths: A single project path or list of project paths to watch
     """
     manager = ProjectWatcherManager()
     

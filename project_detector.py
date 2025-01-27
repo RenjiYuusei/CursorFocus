@@ -20,13 +20,73 @@ PROJECT_TYPES = {
             lambda path: any(f.endswith('.py') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
         ]
     },
+    'java': {
+        'description': 'Java Project',
+        'indicators': ['pom.xml', 'build.gradle', 'gradlew', '.gradle/', 'src/main/java/', 'target/', 'META-INF/'],
+        'file_patterns': ['*.java', '*.jar', '*.war'],
+        'required_files': [],
+        'priority': 7,
+        'additional_checks': [
+            lambda path: any(f.endswith('.java') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
+    'go': {
+        'description': 'Go Project',
+        'indicators': ['go.mod', 'go.sum', 'main.go', 'pkg/', 'cmd/', 'internal/'],
+        'file_patterns': ['*.go'],
+        'required_files': [],
+        'priority': 7,
+        'additional_checks': [
+            lambda path: any(f.endswith('.go') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
+    'ruby': {
+        'description': 'Ruby Project',
+        'indicators': ['Gemfile', 'Rakefile', '.ruby-version', 'config.ru', 'bin/rails', 'app/', 'lib/'],
+        'file_patterns': ['*.rb', '*.erb', '*.rake'],
+        'required_files': [],
+        'priority': 6,
+        'additional_checks': [
+            lambda path: any(f.endswith('.rb') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
+    'rust': {
+        'description': 'Rust Project',
+        'indicators': ['Cargo.toml', 'Cargo.lock', 'src/main.rs', 'src/lib.rs', 'target/'],
+        'file_patterns': ['*.rs'],
+        'required_files': [],
+        'priority': 7,
+        'additional_checks': [
+            lambda path: any(f.endswith('.rs') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
+    'dart': {
+        'description': 'Dart/Flutter Project',
+        'indicators': ['pubspec.yaml', 'pubspec.lock', '.dart_tool/', 'android/', 'ios/', 'lib/', 'test/'],
+        'file_patterns': ['*.dart'],
+        'required_files': [],
+        'priority': 6,
+        'additional_checks': [
+            lambda path: any(f.endswith('.dart') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
+    'scala': {
+        'description': 'Scala Project',
+        'indicators': ['build.sbt', 'project/build.properties', '.scala-build/', 'src/main/scala/'],
+        'file_patterns': ['*.scala'],
+        'required_files': [],
+        'priority': 6,
+        'additional_checks': [
+            lambda path: any(f.endswith('.scala') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
+        ]
+    },
     'javascript': {
         'description': 'JavaScript/Node.js Project', 
         'indicators': ['package.json', 'package-lock.json', 'yarn.lock', 'node_modules/', 'webpack.config.js', '.npmrc', '.nvmrc', 'next.config.js'],
         'file_patterns': ['*.js', '*.jsx', '*.mjs', '*.cjs'],
         'required_files': [],
         'priority': 5,
-        'additional_checks': [
+        'additonal_checks': [
             lambda path: any(f.endswith(('.js', '.jsx', '.mjs', '.cjs')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
         ]
     },
@@ -67,16 +127,6 @@ PROJECT_TYPES = {
             lambda path: any(f.endswith(('.cpp', '.hpp', '.cc', '.cxx', '.h', '.hxx')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
         ]
     },
-    'java': {
-        'description': 'Java Project',
-        'indicators': ['pom.xml', 'build.gradle', 'settings.gradle', 'gradlew', 'mvnw', '.classpath', '.project'],
-        'file_patterns': ['*.java', '*.jar'],
-        'required_files': [],
-        'priority': 5,
-        'additional_checks': [
-            lambda path: any(f.endswith('.java') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
-        ]
-    },
     'csharp': {
         'description': 'C# Project',
         'indicators': ['.sln', '.csproj', '.cs', 'packages.config', 'NuGet.Config', 'bin/Debug/', 'bin/Release/'],
@@ -85,46 +135,6 @@ PROJECT_TYPES = {
         'priority': 5,
         'additional_checks': [
             lambda path: any(f.endswith('.cs') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
-        ]
-    },
-    'go': {
-        'description': 'Go Project',
-        'indicators': ['go.mod', 'go.sum', 'go.work', 'vendor/'],
-        'file_patterns': ['*.go'],
-        'required_files': [],
-        'priority': 5,
-        'additional_checks': [
-            lambda path: any(f.endswith('.go') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
-        ]
-    },
-    'rust': {
-        'description': 'Rust Project',
-        'indicators': ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'target/'],
-        'file_patterns': ['*.rs'],
-        'required_files': [],
-        'priority': 5,
-        'additional_checks': [
-            lambda path: any(f.endswith('.rs') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
-        ]
-    },
-    'swift': {
-        'description': 'Swift Project',
-        'indicators': ['Package.swift', '*.xcodeproj', '*.xcworkspace', '*.pbxproj', 'Pods/'],
-        'file_patterns': ['*.swift'],
-        'required_files': [],
-        'priority': 5,
-        'additional_checks': [
-            lambda path: any(f.endswith('.swift') for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
-        ]
-    },
-    'ruby': {
-        'description': 'Ruby Project',
-        'indicators': ['Gemfile', 'Rakefile', '*.rb', '.ruby-version', 'config.ru'],
-        'file_patterns': ['*.rb', '*.erb'],
-        'required_files': [],
-        'priority': 5,
-        'additional_checks': [
-            lambda path: any(f.endswith(('.rb', '.erb')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
         ]
     },
     'kotlin': {
@@ -136,30 +146,6 @@ PROJECT_TYPES = {
         'additional_checks': [
             lambda path: any(f.endswith(('.kt', '.kts')) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)))
         ]
-    },
-    'zig': {
-        'description': 'Zig Project',
-        'indicators': ['build.zig', 'zig.mod'],
-        'required_files': [],
-        'priority': 5
-    },
-    'rush': {
-        'description': 'Rush Project',
-        'indicators': ['rush.json', '.rush'],
-        'required_files': [],
-        'priority': 5
-    },
-    'perl': {
-        'description': 'Perl Project',
-        'indicators': ['*.pl', '*.pm', 'cpanfile'],
-        'required_files': [],
-        'priority': 5
-    },
-    'lua': {
-        'description': 'Lua Project',
-        'indicators': ['*.lua', 'init.lua', 'main.lua', 'rockspec'],
-        'required_files': [],
-        'priority': 5
     }
 }
 
@@ -335,12 +321,12 @@ def detect_language_and_framework(project_path):
         'cpp': ['.cpp', '.hpp', '.cc', '.cxx'],
         'c': ['.c', '.h'],
         'csharp': ['.cs', '.csproj', '.sln'],
-        'ruby': ['.rb', 'Gemfile'],
-        'go': ['.go', 'go.mod'],
-        'zig': ['.zig', 'build.zig'],
-        'rush': ['.rush', 'rush.json'],
-        'perl': ['.pl', '.pm', 'cpanfile'],
-        'lua': ['.lua', 'init.lua', 'main.lua']
+        'java': ['.java', 'pom.xml', 'build.gradle'],
+        'go': ['.go', 'go.mod', 'go.sum'],
+        'ruby': ['.rb', 'Gemfile', 'Rakefile'],
+        'rust': ['.rs', 'Cargo.toml'],
+        'dart': ['.dart', 'pubspec.yaml'],
+        'scala': ['.scala', 'build.sbt']
     }
     
     # Framework detection based on specific files/directories
@@ -361,8 +347,26 @@ def detect_language_and_framework(project_path):
         'spring': ['spring-boot', 'SpringBoot'],
         'laravel': ['laravel', 'Laravel'],
         'gin': ['gin-gonic/gin'],
-        'love2d': ['love.'],
-        'corona': ['corona.']
+        'flutter': ['flutter', 'Flutter'],
+        'angular': ['@angular/core'],
+        'vue': ['vue', 'Vue'],
+        'svelte': ['svelte'],
+        'next': ['next', 'Next.js'],
+        'nuxt': ['nuxt', 'Nuxt.js'],
+        'nest': ['@nestjs/core'],
+        'fiber': ['fiber'],
+        'echo': ['labstack/echo'],
+        'rocket': ['rocket'],
+        'actix': ['actix-web'],
+        'axum': ['axum'],
+        'sinatra': ['sinatra'],
+        'hanami': ['hanami'],
+        'play': ['play.api'],
+        'akka': ['akka'],
+        'ktor': ['ktor'],
+        'micronaut': ['micronaut'],
+        'quarkus': ['quarkus'],
+        'helidon': ['helidon']
     }
     
     # Detect language
@@ -411,13 +415,7 @@ def get_file_type_info(filename):
         '.c': ('C Source', 'C implementation file'),
         '.h': ('C/C++ Header', 'Header file'),
         '.cs': ('C# Source', 'C# implementation file'),
-        '.csx': ('C# Script', 'C# script file'),
-        '.rb': ('Ruby Source', 'Ruby implementation file'),
-        '.go': ('Go Source', 'Go implementation file'),
-        '.zig': ('Zig Source', 'Zig implementation file'),
-        '.rush': ('Rush Source', 'Rush implementation file'),
-        '.perl': ('Perl Source', 'Perl script file'),
-        '.lua': ('Lua Source', 'Lua script file')
+        '.csx': ('C# Script', 'C# script file')
     }
     
     return type_map.get(ext, ('Generic', 'Project file'))
