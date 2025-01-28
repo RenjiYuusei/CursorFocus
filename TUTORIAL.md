@@ -77,7 +77,7 @@ This file contains:
 - Warning about file length
 
 ### 2. .cursorrules
-File này chứa:
+This file contains:
 - Cursor setup for project
 - Auto update when project changes
 - Format: JSON or Markdown
