@@ -12,18 +12,18 @@ class RulesGenerator:
     PATTERNS = {
         'import': {
             'python': r'^(?:from|import)\s+(?P<module>[a-zA-Z0-9_\.]+)',
-            'web': r'(?:import\s+.*?from\s+[\'"](?P<module>[^\'\"]+)[\'"]|require\s*\([\'"](?P<module2>[^\'\"]+)[\'"]\)|(?:import|require)\s+.*?[\'"](?P<module3>[^\'\"]+)[\'"])', # Js/Ts
-            'system': r'(?:#include\s*[<"](?P<module>[^>"]+)[>"]|using\s+(?:static\s+)?(?P<module2>[a-zA-Z0-9_\.]+);|namespace\s+(?P<module3>[a-zA-Z0-9_\\]+)|import\s+(?P<module4>[^\n]+))' # C/C++/C#/PHP/Kotlin/Swift
+            'web': r'(?:import\s+.*?from\s+[\'"](?P<module>[^\'\"]+)[\'"]|require\s*\([\'"](?P<module2>[^\'\"]+)[\'"]\)|(?:import|require)\s+.*?[\'"](?P<module3>[^\'\"]+)[\'"]|import\s+(?:static\s+)?(?P<module4>[a-zA-Z0-9_\.]+(?:\.[*])?)|require\s+[\'"](?P<module5>[^\'\"]+)[\'"])', # Js/Ts/Java/Ruby
+            'system': r'(?:#include\s*[<"](?P<module>[^>"]+)[>"]|using\s+(?:static\s+)?(?P<module2>[a-zA-Z0-9_\.]+);|namespace\s+(?P<module3>[a-zA-Z0-9_\\]+)|import\s+(?P<module4>[^\n]+)|#import\s*[<"](?P<module5>[^>"]+)[>"])', # C/C++/C#/PHP/Kotlin/Swift/Objective-C
         },
         'class': {
             'python': r'class\s+(?P<name>\w+)(?:\((?P<base>.*?)\))?\s*:',
-            'web': r'(?:class|const)\s+(?P<name>\w+)(?:\s*(?:extends|implements)\s+(?P<base>[^{]+))?(?:\s*=\s*(?:styled|React\.memo|React\.forwardRef))?\s*[{<]', # Ts/Js
-            'system': r'(?:public\s+|private\s+|protected\s+|internal\s+)?(?:abstract\s+)?(?:partial\s+)?(?:class|struct|enum|union)\s+(?P<name>\w+)(?:\s*(?::\s*|extends\s+|implements\s+)(?P<base>[^{]+))?(?:\s*{)?' # C#/C++/Kotlin/Swift
+            'web': r'(?:class|const)\s+(?P<name>\w+)(?:\s*(?:extends|implements)\s+(?P<base>[^{]+))?(?:\s*=\s*(?:styled|React\.memo|React\.forwardRef))?\s*[{<]|class\s+(?P<name2>\w+)(?:\s*(?:extends|implements)\s+(?P<base2>[^{]+))?\s*{|class\s+(?P<name3>\w+)\s*(?:<[^>]+>)?\s*(?:extends|implements|<)\s*(?P<base3>[^{]+)?\s*{', # Ts/Js/Java/Ruby
+            'system': r'(?:public\s+|private\s+|protected\s+|internal\s+)?(?:abstract\s+)?(?:partial\s+)?(?:class|struct|enum|union|@interface|@implementation)\s+(?P<name>\w+)(?:\s*(?::\s*|extends\s+|implements\s+)(?P<base>[^{]+))?(?:\s*{)?' # C#/C++/Kotlin/Swift/Objective-C
         },
         'function': {
             'python': r'def\s+(?P<name>\w+)\s*\((?P<params>.*?)\)(?:\s*->\s*(?P<return>[^:]+))?\s*:',
-            'web': r'(?:function\s+(?P<name>\w+)|(?:const|let|var)\s+(?P<name2>\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))\s*\((?P<params>.*?)\)|(?:function|const)\s+(?P<name3>\w+)\s*(?:<[^>]+>)?\s*(?:=\s*)?(?:async\s*)?\((?P<params2>.*?)\)(?:\s*:\s*(?P<return>[^{=]+))?', # Ts/Js
-            'system': r'(?:public|private|protected|internal)?\s*(?:static\s+)?(?:virtual\s+)?(?:override\s+)?(?:async\s+)?(?:[\w:]+\s+)?(?P<name>\w+)\s+(?P<name2>\w+)\s*\((?P<params>.*?)\)(?:\s*(?:const|override|final|noexcept))?\s*(?:{\s*)?' # C#/C++/Kotlin/Swift
+            'web': r'(?:function\s+(?P<name>\w+)|(?:const|let|var)\s+(?P<name2>\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))\s*\((?P<params>.*?)\)|(?:function|const)\s+(?P<name3>\w+)\s*(?:<[^>]+>)?\s*(?:=\s*)?(?:async\s*)?\((?P<params2>.*?)\)(?:\s*:\s*(?P<return>[^{=]+))?|(?:public|private|protected)?\s*(?:static\s+)?(?:final\s+)?(?:\w+\s+)?(?P<name4>\w+)\s*\((?P<params3>.*?)\)|def\s+(?P<name5>\w+)(?:\((?P<params4>.*?)\))?\s*(?:do|\{)', # Ts/Js/Java/Ruby
+            'system': r'(?:public|private|protected|internal)?\s*(?:static\s+)?(?:virtual\s+)?(?:override\s+)?(?:async\s+)?(?:[\w:]+\s+)?(?P<name>\w+)\s+(?P<name2>\w+)\s*\((?P<params>.*?)\)(?:\s*(?:const|override|final|noexcept))?\s*(?:{\s*)?|[-+]\s*\((?P<return>[^)]+)\)(?P<name3>\w+)(?::\s*\((?P<params2>[^)]+)\)\w+)*' # C#/C++/Kotlin/Swift/Objective-C
         },
         'common': {
             'method': r'(?:async\s+)?(?P<name>\w+)\s*\((?P<params>.*?)\)\s*{',
@@ -37,7 +37,8 @@ class RulesGenerator:
             'lifecycle': r'(?:Awake|Start|Update|FixedUpdate|LateUpdate|OnEnable|OnDisable|OnDestroy|OnTrigger(?:Enter|Exit)|OnCollision(?:Enter|Exit)|OnMouse(?:Down|Up)|OnGUI)',
             'attribute': r'\[(?:SerializeField|Header|Tooltip|Range|RequireComponent|ExecuteInEditMode|CreateAssetMenu|MenuItem)\s*(?:\((?P<params>.*?)\))?\]',
             'type': r'(?:GameObject|Transform|Rigidbody|Collider|AudioSource|Camera|Light|Animator|ParticleSystem|Canvas|Image|Text|Button|Vector[23]|Quaternion)',
-            'event': r'UnityEvent\s*<(?P<type>[^>]*)>?\s+(?P<name>\w+)'
+            'event': r'UnityEvent\s*<(?P<type>[^>]*)>?\s+(?P<name>\w+)',
+            'field': r'(?:public|private|protected|internal)?\s*(?:\[SerializeField\]\s*)?(\w+)\s+(\w+)\s*(?:=\s*[^;]+)?;'
         }
     }
 
@@ -137,7 +138,7 @@ class RulesGenerator:
                 
                 # Analyze code files
                 file_ext = os.path.splitext(file)[1].lower()
-                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx']:
+                if file_ext in ['.py', '.js', '.ts', '.tsx', '.kt', '.php', '.swift', '.cpp', '.c', '.h', '.hpp', '.cs', '.csx', '.java', '.rb', '.objc']:
                     structure['files'].append(rel_path)
                     dir_stats[rel_root]['code_files'] += 1
                     
@@ -200,6 +201,9 @@ class RulesGenerator:
             '.hpp': 'C++ Header',
             '.cs': 'C#',
             '.csx': 'C# Script',
+            '.java': 'Java',
+            '.rb': 'Ruby',
+            '.objc': 'Objective-C',
         }
         return lang_map.get(ext, 'Unknown')
 
@@ -215,7 +219,11 @@ class RulesGenerator:
             'c': 'system',
             'php': 'system',
             'kotlin': 'system',
-            'swift': 'system'
+            'swift': 'system',
+            'java': 'web',
+            'ruby': 'web',
+            'objc': 'system',
+            'objc++': 'system'
         }
         pattern_group = pattern_groups.get(language, 'system')
 
@@ -660,8 +668,7 @@ Do not include technical metrics in the description."""
             })
 
         # Find Unity fields
-        field_pattern = r'(?:public|private|protected|internal)?\s*(?:\[SerializeField\]\s*)?(\w+)\s+(\w+)\s*(?:=\s*[^;]+)?;'
-        for match in re.finditer(field_pattern, content):
+        for match in re.finditer(self.PATTERNS['unity']['field'], content):
             field_type = match.group(1)
             is_unity_type = bool(re.search(self.PATTERNS['unity']['type'], field_type))
             if is_unity_type:
