@@ -313,6 +313,10 @@ class RulesGenerator:
         if language in ['typescript', 'javascript']:
             self._analyze_web_patterns(content, rel_path, structure)
 
+        # Handle Unity-specific patterns for C#
+        if language == 'csharp' and any(x in content for x in ['UnityEngine', 'MonoBehaviour', 'ScriptableObject']):
+            self._analyze_unity_patterns(content, rel_path, structure)
+
     def _analyze_directory_patterns(self, structure: Dict[str, Any], dir_stats: Dict[str, Any]):
         """Analyze directory organization patterns."""
         for dir_path, stats in dir_stats.items():
@@ -743,6 +747,59 @@ Do not include technical metrics in the description."""
             structure['patterns']['code_organization'].append({
                 'type': 'styled_component',
                 'element': match.group('element') if match.group('element') else 'css',
+                'file': rel_path
+            })
+
+    def _analyze_unity_patterns(self, content: str, rel_path: str, structure: Dict[str, Any]) -> None:
+        """Analyze Unity-specific patterns in C# scripts."""
+        # Find MonoBehaviour and ScriptableObject components
+        for match in self.compiled_patterns['unity']['component'].finditer(content):
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(0),
+                'type': 'unity_component',
+                'file': rel_path
+            })
+
+        # Find Unity lifecycle methods
+        for match in self.compiled_patterns['unity']['lifecycle'].finditer(content):
+            structure['patterns']['function_patterns'].append({
+                'name': match.group(0),
+                'type': 'unity_lifecycle',
+                'file': rel_path
+            })
+
+        # Find Unity attributes
+        for match in self.compiled_patterns['unity']['attribute'].finditer(content):
+            structure['patterns']['code_organization'].append({
+                'type': 'unity_attribute',
+                'name': match.group(0),
+                'parameters': match.group('params') if match.group('params') else '',
+                'file': rel_path
+            })
+
+        # Find Unity types
+        for match in self.compiled_patterns['unity']['type'].finditer(content):
+            structure['patterns']['class_patterns'].append({
+                'name': match.group(0),
+                'type': 'unity_type',
+                'file': rel_path
+            })
+
+        # Find Unity events
+        for match in self.compiled_patterns['unity']['event'].finditer(content):
+            structure['patterns']['code_organization'].append({
+                'type': 'unity_event',
+                'event_type': match.group('type'),
+                'name': match.group('name'),
+                'file': rel_path
+            })
+
+        # Find Unity serialized fields
+        for match in self.compiled_patterns['unity']['field'].finditer(content):
+            structure['patterns']['code_organization'].append({
+                'type': 'unity_field',
+                'field_type': match.group(1),
+                'name': match.group(2),
                 'file': rel_path
             })
 
