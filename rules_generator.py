@@ -223,7 +223,6 @@ class RulesGenerator:
             'java': 'web',
             'ruby': 'web',
             'objc': 'system',
-            'objc++': 'system'
         }
         pattern_group = pattern_groups.get(language, 'system')
 
