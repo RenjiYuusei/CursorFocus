@@ -9,28 +9,38 @@ from dotenv import load_dotenv
 
 class RulesGenerator:
     # Common regex patterns for all languages
+    # Language groups:
+    # python: Python
+    # web: JavaScript, TypeScript, Java, Ruby
+    # system: C/C++, C#, PHP, Swift, Objective-C
     PATTERNS = {
         'import': {
-            'python': r'^(?:from|import)\s+(?P<module>[a-zA-Z0-9_\.]+)',
+            'python': r'^(?:from|import)\s+(?P<module>[a-zA-Z0-9_\.]+)', # Python
             'web': r'(?:import\s+.*?from\s+[\'"](?P<module>[^\'\"]+)[\'"]|require\s*\([\'"](?P<module2>[^\'\"]+)[\'"]\)|(?:import|require)\s+.*?[\'"](?P<module3>[^\'\"]+)[\'"]|import\s+(?:static\s+)?(?P<module4>[a-zA-Z0-9_\.]+(?:\.[*])?)|require\s+[\'"](?P<module5>[^\'\"]+)[\'"])', # Js/Ts/Java/Ruby
             'system': r'(?:#include\s*[<"](?P<module>[^>"]+)[>"]|using\s+(?:static\s+)?(?P<module2>[a-zA-Z0-9_\.]+);|namespace\s+(?P<module3>[a-zA-Z0-9_\\]+)|import\s+(?P<module4>[^\n]+)|#import\s*[<"](?P<module5>[^>"]+)[>"])', # C/C++/C#/PHP/Kotlin/Swift/Objective-C
         },
         'class': {
-            'python': r'class\s+(?P<name>\w+)(?:\((?P<base>.*?)\))?\s*:',
+            'python': r'class\s+(?P<name>\w+)(?:\((?P<base>.*?)\))?\s*:', # Python
             'web': r'(?:class|const)\s+(?P<name>\w+)(?:\s*(?:extends|implements)\s+(?P<base>[^{]+))?(?:\s*=\s*(?:styled|React\.memo|React\.forwardRef))?\s*[{<]|class\s+(?P<name2>\w+)(?:\s*(?:extends|implements)\s+(?P<base2>[^{]+))?\s*{|class\s+(?P<name3>\w+)\s*(?:<[^>]+>)?\s*(?:extends|implements|<)\s*(?P<base3>[^{]+)?\s*{', # Ts/Js/Java/Ruby
             'system': r'(?:public\s+|private\s+|protected\s+|internal\s+)?(?:abstract\s+)?(?:partial\s+)?(?:class|struct|enum|union|@interface|@implementation)\s+(?P<name>\w+)(?:\s*(?::\s*|extends\s+|implements\s+)(?P<base>[^{]+))?(?:\s*{)?' # C#/C++/Kotlin/Swift/Objective-C
         },
         'function': {
-            'python': r'def\s+(?P<name>\w+)\s*\((?P<params>.*?)\)(?:\s*->\s*(?P<return>[^:]+))?\s*:',
+            'python': r'def\s+(?P<name>\w+)\s*\((?P<params>.*?)\)(?:\s*->\s*(?P<return>[^:]+))?\s*:', # Python
             'web': r'(?:function\s+(?P<name>\w+)|(?:const|let|var)\s+(?P<name2>\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))\s*\((?P<params>.*?)\)|(?:function|const)\s+(?P<name3>\w+)\s*(?:<[^>]+>)?\s*(?:=\s*)?(?:async\s*)?\((?P<params2>.*?)\)(?:\s*:\s*(?P<return>[^{=]+))?|(?:public|private|protected)?\s*(?:static\s+)?(?:final\s+)?(?:\w+\s+)?(?P<name4>\w+)\s*\((?P<params3>.*?)\)|def\s+(?P<name5>\w+)(?:\((?P<params4>.*?)\))?\s*(?:do|\{)', # Ts/Js/Java/Ruby
             'system': r'(?:public|private|protected|internal)?\s*(?:static\s+)?(?:virtual\s+)?(?:override\s+)?(?:async\s+)?(?:[\w:]+\s+)?(?P<name>\w+)\s+(?P<name2>\w+)\s*\((?P<params>.*?)\)(?:\s*(?:const|override|final|noexcept))?\s*(?:{\s*)?|[-+]\s*\((?P<return>[^)]+)\)(?P<name3>\w+)(?::\s*\((?P<params2>[^)]+)\)\w+)*' # C#/C++/Kotlin/Swift/Objective-C
         },
         'common': {
-            'method': r'(?:async\s+)?(?P<name>\w+)\s*\((?P<params>.*?)\)\s*{',
-            'variable': r'(?:const|let|var)\s*(?P<name>\w+)\s*=\s*(?P<value>[^;]+)',
-            'error': r'try\s*{[^}]*}\s*catch\s*\((?P<error>\w+)\)',
-            'interface': r'(?:interface|type)\s+(?P<name>\w+)(?:\s+extends\s+(?P<base>[^{]+))?',
-            'jsx_component': r'<(?P<name>\w+)(?:\s+[^>]*)?>'
+            'method': r'(?:async\s+)?(?P<name>\w+)\s*\((?P<params>.*?)\)\s*{', # Method
+            'variable': r'(?:const|let|var)\s*(?P<name>\w+)\s*=\s*(?P<value>[^;]+)', # Variable
+            'error': r'try\s*{[^}]*}\s*catch\s*\((?P<error>\w+)\)', # Error
+            'interface': r'(?:interface|type)\s+(?P<name>\w+)(?:\s+extends\s+(?P<base>[^{]+))?', # Interface
+            'jsx_component': r'<(?P<name>\w+)(?:\s+[^>]*)?>', # React/NextJS Component
+            'react_hook': r'use[A-Z]\w+', # React Hook
+            'next_api': r'(?:getStaticProps|getStaticPaths|getServerSideProps)', # Next.js Data Fetching
+            'next_page': r'(?:pages|app)/(?P<route>[^/]+)(?:/(?P<nested>[^/]+))*\.(?:js|jsx|ts|tsx)', # Next.js Page/Route
+            'next_layout': r'layout\.(?:js|jsx|ts|tsx)', # Next.js Layout
+            'next_middleware': r'middleware\.(?:js|jsx|ts|tsx)', # Next.js Middleware
+            'styled_component': r'styled\.(?P<element>\w+)`[^`]*`|css`[^`]*`' # Styled Components
         },
         'unity': {
             'component': r'(?:MonoBehaviour|ScriptableObject|EditorWindow)',
@@ -45,6 +55,9 @@ class RulesGenerator:
     def __init__(self, project_path: str):
         self.project_path = project_path
         self.analyzer = RulesAnalyzer(project_path)
+        
+        # Precompile regex patterns
+        self.compiled_patterns = self._compile_patterns()
         
         # Load environment variables from .env
         load_dotenv()
@@ -70,6 +83,33 @@ class RulesGenerator:
         except Exception as e:
             print(f"\n⚠️ Error when initializing Gemini AI: {e}")
             raise
+
+    def _compile_patterns(self) -> Dict[str, Dict[str, Any]]:
+        """Precompile all regex patterns for better performance."""
+        compiled = {}
+        
+        # Compile patterns for each category
+        for category, patterns in self.PATTERNS.items():
+            compiled[category] = {}
+            
+            if isinstance(patterns, dict):
+                # Handle nested patterns (import, class, function)
+                if category in ['import', 'class', 'function']:
+                    for lang_group, pattern in patterns.items():
+                        compiled[category][lang_group] = re.compile(pattern)
+                # Handle common patterns
+                elif category == 'common':
+                    for pattern_name, pattern in patterns.items():
+                        compiled[category][pattern_name] = re.compile(pattern)
+                # Handle Unity patterns
+                elif category == 'unity':
+                    for pattern_name, pattern in patterns.items():
+                        compiled[category][pattern_name] = re.compile(pattern)
+            else:
+                # Handle simple patterns
+                compiled[category] = re.compile(patterns)
+                
+        return compiled
 
     def _get_timestamp(self) -> str:
         """Get current timestamp in standard format."""
@@ -228,8 +268,8 @@ class RulesGenerator:
 
         # Find patterns using named groups
         for pattern_type in ['import', 'class', 'function']:
-            pattern = self.PATTERNS[pattern_type][pattern_group]
-            matches = re.finditer(pattern, content)
+            pattern = self.compiled_patterns[pattern_type][pattern_group]
+            matches = pattern.finditer(content)
             
             for match in matches:
                 try:
@@ -262,17 +302,6 @@ class RulesGenerator:
                     if 'return' in groups and groups['return']:
                         info['return_type'] = groups['return'].strip()
                         
-                    # Add Unity-specific info
-                    if language == 'csharp':
-                        if pattern_type == 'class' and info.get('base'):
-                            is_unity = bool(re.search(self.PATTERNS['unity']['component'], info['base']))
-                            if is_unity:
-                                info['is_unity_component'] = True
-                        elif pattern_type == 'function':
-                            is_unity = bool(re.search(self.PATTERNS['unity']['lifecycle'], name))
-                            if is_unity:
-                                info['is_unity_lifecycle'] = True
-                                
                     # Add to appropriate pattern list
                     pattern_key = f'{pattern_type}_patterns'
                     structure['patterns'][pattern_key].append(info)
@@ -280,10 +309,8 @@ class RulesGenerator:
                 except Exception as e:
                     continue  # Skip on any error
                     
-        # Handle language-specific patterns
-        if language == 'csharp':
-            self._analyze_unity_patterns(content, rel_path, structure)
-        elif language in ['typescript', 'javascript']:
+        # Handle web-specific patterns
+        if language in ['typescript', 'javascript']:
             self._analyze_web_patterns(content, rel_path, structure)
 
     def _analyze_directory_patterns(self, structure: Dict[str, Any], dir_stats: Dict[str, Any]):
@@ -655,43 +682,10 @@ Do not include technical metrics in the description."""
             print(f"❌ Failed to generate rules: {e}")
             raise 
 
-    def _analyze_unity_patterns(self, content: str, rel_path: str, structure: Dict[str, Any]) -> None:
-        """Analyze Unity-specific patterns in C# files."""
-        # Find Unity attributes
-        for match in re.finditer(self.PATTERNS['unity']['attribute'], content):
-            structure['patterns']['code_organization'].append({
-                'type': 'unity_attribute',
-                'attribute': match.group(0),
-                'parameters': match.group(1) if match.group(1) else '',
-                'file': rel_path
-            })
-
-        # Find Unity fields
-        for match in re.finditer(self.PATTERNS['unity']['field'], content):
-            field_type = match.group(1)
-            is_unity_type = bool(re.search(self.PATTERNS['unity']['type'], field_type))
-            if is_unity_type:
-                structure['patterns']['code_organization'].append({
-                    'type': 'unity_field',
-                    'field_type': field_type,
-                    'name': match.group(2),
-                    'is_unity_type': True,
-                    'file': rel_path
-                })
-
-        # Find Unity events
-        for match in re.finditer(self.PATTERNS['unity']['event'], content):
-            structure['patterns']['code_organization'].append({
-                'type': 'unity_event',
-                'event_type': match.group(1) if match.group(1) else 'void',
-                'name': match.group(2),
-                'file': rel_path
-            })
-
     def _analyze_web_patterns(self, content: str, rel_path: str, structure: Dict[str, Any]) -> None:
-        """Analyze TypeScript/JavaScript specific patterns."""
+        """Analyze React/Next.js specific patterns."""
         # Find interfaces and types
-        for match in re.finditer(self.PATTERNS['common']['interface'], content):
+        for match in self.compiled_patterns['common']['interface'].finditer(content):
             structure['patterns']['class_patterns'].append({
                 'name': match.group(1),
                 'type': 'interface/type',
@@ -699,14 +693,56 @@ Do not include technical metrics in the description."""
                 'file': rel_path
             })
 
-        # Find JSX components in TSX files
-        if rel_path.endswith('.tsx'):
-            for match in re.finditer(self.PATTERNS['common']['jsx_component'], content):
-                component_name = match.group(1)
-                if component_name[0].isupper():
-                    structure['patterns']['class_patterns'].append({
-                        'name': component_name,
-                        'type': 'jsx_component',
-                        'file': rel_path
-                    })
+        # Find React components
+        for match in self.compiled_patterns['common']['jsx_component'].finditer(content):
+            component_name = match.group(1)
+            if component_name[0].isupper():  # React components start with uppercase
+                structure['patterns']['class_patterns'].append({
+                    'name': component_name,
+                    'type': 'react_component',
+                    'file': rel_path
+                })
+
+        # Find React hooks
+        for hook in re.finditer(self.compiled_patterns['common']['react_hook'], content):
+            structure['patterns']['function_patterns'].append({
+                'name': hook.group(0),
+                'type': 'react_hook',
+                'file': rel_path
+            })
+
+        # Find Next.js specific patterns
+        if any(x in rel_path for x in ['pages/', 'app/']):
+            # Check for Next.js data fetching methods
+            for method in re.finditer(self.compiled_patterns['common']['next_api'], content):
+                structure['patterns']['function_patterns'].append({
+                    'name': method.group(0),
+                    'type': 'next_data_fetching',
+                    'file': rel_path
+                })
+
+            # Analyze page/route structure
+            page_match = re.search(self.compiled_patterns['common']['next_page'], rel_path)
+            if page_match:
+                structure['patterns']['code_organization'].append({
+                    'type': 'next_page',
+                    'route': page_match.group('route'),
+                    'nested': page_match.group('nested'),
+                    'file': rel_path
+                })
+
+            # Check for layouts
+            if re.search(self.compiled_patterns['common']['next_layout'], rel_path):
+                structure['patterns']['code_organization'].append({
+                    'type': 'next_layout',
+                    'file': rel_path
+                })
+
+        # Find styled-components patterns
+        for match in re.finditer(self.compiled_patterns['common']['styled_component'], content):
+            structure['patterns']['code_organization'].append({
+                'type': 'styled_component',
+                'element': match.group('element') if match.group('element') else 'css',
+                'file': rel_path
+            })
 
