@@ -9,8 +9,8 @@ from rules_watcher import ProjectWatcherManager
 import logging
 from auto_updater import AutoUpdater
 
-def retry_generate_rules(project_path, project_name, max_retries=5):
-    """Retry generating rules file with user confirmation."""
+def retry_generate_rules(project_path, project_name, max_retries=3):
+    """Retry generating rules file automatically."""
     retries = 0
     while retries < max_retries:
         try:
@@ -39,10 +39,11 @@ def retry_generate_rules(project_path, project_name, max_retries=5):
         except Exception as e:
             retries += 1
             if retries < max_retries:
-                print(f"\n❌ Failed to generate rules (attempt {retries}/{max_retries}): {e}")
-                response = input("Retry? (y/n): ").lower()
-                if response != 'y':
-                    raise
+                wait_time = 2 * (2 ** (retries - 1))  # Exponential backoff
+                print(f"\n⚠️ Error occurred, automatically retrying in {wait_time} seconds... (attempt {retries}/{max_retries})")
+                print(f"Error details: {str(e)}")
+                time.sleep(wait_time)
+                continue
             else:
                 print(f"\n❌ Failed to generate rules after {max_retries} attempts: {e}")
                 raise

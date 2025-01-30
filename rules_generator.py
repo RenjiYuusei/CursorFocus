@@ -6,6 +6,29 @@ import google.generativeai as genai
 import re
 from rules_analyzer import RulesAnalyzer
 from dotenv import load_dotenv
+import time
+from functools import wraps
+
+def retry_on_429(max_retries=3, delay=2):
+    """Decorator to retry function on 429 error with exponential backoff."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if '429' in str(e) and retries < max_retries - 1:
+                        wait_time = delay * (2 ** retries)  # Exponential backoff
+                        print(f"⚠️ Rate limit hit, retrying in {wait_time} seconds...")
+                        time.sleep(wait_time)
+                        retries += 1
+                        continue
+                    raise
+            return func(*args, **kwargs)  # Last try
+        return wrapper
+    return decorator
 
 class RulesGenerator:
     # Common regex patterns for all languages
@@ -360,6 +383,7 @@ class RulesGenerator:
                 'code_metrics': stats['patterns']
             })
 
+    @retry_on_429(max_retries=3, delay=2)
     def _generate_ai_rules(self, project_info: Dict[str, Any]) -> Dict[str, Any]:
         """Generate rules using Gemini AI based on project analysis."""
         try:
@@ -509,6 +533,7 @@ Critical Guidelines for AI:
             print(f"⚠️ Error generating AI rules: {e}")
             raise
 
+    @retry_on_429(max_retries=3, delay=2)
     def _generate_project_description(self, project_structure: Dict[str, Any]) -> str:
         """Generate project description using AI based on project analysis."""
         try:
