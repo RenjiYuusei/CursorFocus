@@ -1,55 +1,80 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
-import sys
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+import platform
+from dotenv import load_dotenv
 
-block_cipher = None
-
-# Collect all required data files
-datas = []
-datas += collect_data_files('watchdog')
-datas += collect_data_files('google')
-datas += collect_data_files('rich')
-datas += collect_data_files('tqdm')
-
-# Collect all required hidden imports
-hiddenimports = []
-hiddenimports += collect_submodules('watchdog')
-hiddenimports += collect_submodules('google')
-hiddenimports += collect_submodules('rich')
-hiddenimports += collect_submodules('tqdm')
-
-# Add platform-specific imports
-if sys.platform == 'win32':
-    hiddenimports += ['msvcrt']
-elif sys.platform == 'darwin':
-    hiddenimports += ['termios', 'fcntl']
-
-# Add common imports
-hiddenimports += ['select', 'shutil']
-
-# Get version from environment or default
+# Load environment variables to get version
+load_dotenv()
 version = os.getenv('VERSION', '1.0.0')
 
-# Determine platform-specific executable name
-if sys.platform == 'win32':
-    exe_name = f'CursorFocus_{version}_windows'
-    icon_ext = '.ico'
-elif sys.platform == 'darwin':
-    exe_name = f'CursorFocus_{version}_mac'
-    icon_ext = '.icns'
-else:  # Linux
-    exe_name = f'CursorFocus_{version}_linux'
-    icon_ext = '.ico'
+# Set output name based on system type
+system = platform.system().lower()
+if system == "windows":
+    os_type = "windows"
+    executable_extension = '.exe'
+    icon_extension = '.ico'
+elif system == "linux":
+    os_type = "linux"
+    executable_extension = ''
+    icon_extension = '.ico'
+else:  # Darwin (macOS)
+    os_type = "mac"
+    executable_extension = ''
+    icon_extension = '.icns'
+
+output_name = f"CursorFocus_{version}_{os_type}{executable_extension}"
+
+# Get current directory
+current_dir = os.getcwd()
+
+# Collect data files
+datas = [
+    ('config.json', '.'),
+    ('.env', '.'),
+    ('examples', 'examples'),
+]
 
 # Add icon if it exists
-icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'icon{icon_ext}')
-icon_param = [icon_path] if os.path.exists(icon_path) else None
+icon_path = os.path.join(current_dir, f'icon{icon_extension}')
+icon_param = []
+if os.path.exists(icon_path):
+    icon_param = [('icon', icon_path, 'ICON')]
+
+# List of hidden imports required by CLI
+hiddenimports = [
+    "watchdog.observers.polling",
+    "watchdog.observers.inotify",
+    "watchdog.observers.fsevents",
+    "watchdog.observers.kqueue",
+    "google.generativeai",
+    "google.ai.generativelanguage",
+    "python-dotenv",
+    "colorama",
+    "rich",
+    "tqdm",
+]
+
+# Add platform-specific hidden imports
+if system == 'windows':
+    hiddenimports.extend([
+        "msvcrt",
+    ])
+elif system == 'darwin':  # macOS
+    hiddenimports.extend([
+        "termios",
+        "fcntl",
+    ])
+
+# Add common hidden imports for both platforms
+hiddenimports.extend([
+    "select",
+    "shutil",
+])
 
 a = Analysis(
     ['cli.py'],
-    pathex=[],
+    pathex=[current_dir],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
@@ -57,22 +82,21 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
+
+# Get target architecture from environment variable
+target_arch = os.environ.get('TARGET_ARCH', None)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
-    [],
-    name=exe_name,
+    *icon_param,
+    name=output_name,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -81,9 +105,8 @@ exe = EXE(
     runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
+    argv_emulation=True,  # No effect on non-Mac platforms
+    target_arch=target_arch,  # Only specified when needed via environment variable
     codesign_identity=None,
     entitlements_file=None,
-    icon=icon_param[0] if icon_param else None,
 ) 

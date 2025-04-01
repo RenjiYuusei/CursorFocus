@@ -71,7 +71,7 @@ def build_for_platform(target_system: str, dist_dir: str) -> bool:
     # Add platform-specific hidden imports
     if target_system == 'Windows':
         hiddenimports.extend([
-            "--hidden-import", "msvcrt",
+        "--hidden-import", "msvcrt",
         ])
     elif target_system == 'Darwin':  # macOS
         hiddenimports.extend([
@@ -154,21 +154,21 @@ def build_executable():
     
     # Build for current platform
     success = build_for_platform(current_system, dist_dir)
-    
-    # Copy example files if they exist
-    examples_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'examples')
-    if os.path.exists(examples_dir):
-        examples_dist = os.path.join(dist_dir, 'examples')
-        if not os.path.exists(examples_dist):
-            os.makedirs(examples_dist)
             
-        for item in os.listdir(examples_dir):
-            src = os.path.join(examples_dir, item)
-            dst = os.path.join(examples_dist, item)
-            if os.path.isfile(src):
-                shutil.copy2(src, dst)
-        
-        print(Fore.GREEN + f"✅ Example files copied to: {examples_dist}")
+            # Copy example files if they exist
+            examples_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'examples')
+            if os.path.exists(examples_dir):
+                examples_dist = os.path.join(dist_dir, 'examples')
+                if not os.path.exists(examples_dist):
+                    os.makedirs(examples_dist)
+                    
+                for item in os.listdir(examples_dir):
+                    src = os.path.join(examples_dir, item)
+                    dst = os.path.join(examples_dist, item)
+                    if os.path.isfile(src):
+                        shutil.copy2(src, dst)
+                
+                print(Fore.GREEN + f"✅ Example files copied to: {examples_dist}")
     
     if success:
         print(Fore.GREEN + "\n✅ Build process completed successfully!")
@@ -177,7 +177,7 @@ def build_executable():
         executable_path = os.path.join(dist_dir, executable_name)
         if os.path.exists(executable_path):
             print(Fore.WHITE + f"• {executable_name}")
-    else:
+        else:
         print(Fore.RED + "\n❌ Build process completed with errors")
         sys.exit(1)  # Exit with error code for GitHub Actions
 
