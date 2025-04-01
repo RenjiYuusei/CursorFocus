@@ -73,6 +73,16 @@ if os.path.exists(config_path):
 if 'VERSION' in os.environ:
     version = os.environ['VERSION']
 
+# Create a version file for future reference
+version_file = os.path.join(current_dir, '.version')
+try:
+    with open(version_file, 'w', encoding='utf-8') as f:
+        f.write(version)
+    # Add version file to datas
+    datas.append((version_file, "."))
+except Exception:
+    pass
+
 executable_name = f"CursorFocus_{version}_{system}{executable_extension}"
 
 # Add icon if it exists

@@ -1,5 +1,7 @@
 import os
 import json
+import sys
+import re
 
 def load_config():
     """Load configuration from config.json."""
@@ -7,19 +9,62 @@ def load_config():
         script_dir = os.path.dirname(os.path.abspath(__file__))
         config_path = os.path.join(script_dir, 'config.json')
         
+        # Get the latest version information
+        default_config = get_default_config()
+        latest_version = default_config.get("version")
+        
+        # Load existing config
+        config = None
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
                 if config_path.endswith('.json'):
-                    return json.load(f)
+                    config = json.load(f)
+        
+        if not config:
+            config = default_config
+        else:
+            # Update version in config to match the latest version
+            config["version"] = latest_version
+            
+            # Save the updated config with the correct version
+            try:
+                with open(config_path, 'w') as f:
+                    json.dump(config, f, indent=4)
+            except Exception:
+                pass
                 
-        return get_default_config()
+        return config
     except Exception as e:
         print(f"Error loading config: {e}")
         return None
 
 def get_default_config():
     """Get default configuration settings."""
+    # Try to get version from environment or .version file
+    version = "1.0.0"  # Default fallback version
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Check for .version file
+    version_file = os.path.join(script_dir, '.version')
+    if os.path.exists(version_file):
+        try:
+            with open(version_file, 'r') as f:
+                version = f.read().strip()
+        except Exception:
+            pass
+    
+    # Check executable name for version info
+    try:
+        executable_path = os.path.basename(sys.executable)
+        if 'CursorFocus_' in executable_path:
+            version_match = re.search(r'CursorFocus_(\d+\.\d+\.\d+)', executable_path)
+            if version_match:
+                version = version_match.group(1)
+    except Exception:
+        pass
+                
     return {
+        "version": version,
         "project_path": "",
         "update_interval": 60,
         "max_depth": 3,
