@@ -29,11 +29,22 @@ output_name = f"CursorFocus_{version}_{os_type}{executable_extension}"
 current_dir = os.getcwd()
 
 # Collect data files
-datas = [
-    ('config.json', '.'),
-    ('.env', '.'),
-    ('examples', 'examples'),
-]
+datas = []
+
+# Add config.json if exists
+config_path = os.path.join(current_dir, 'config.json')
+if os.path.exists(config_path):
+    datas.append((config_path, '.'))
+
+# Add .env if exists
+env_path = os.path.join(current_dir, '.env')
+if os.path.exists(env_path):
+    datas.append((env_path, '.'))
+
+# Add examples directory if exists
+examples_dir = os.path.join(current_dir, 'examples')
+if os.path.exists(examples_dir):
+    datas.append((examples_dir, 'examples'))
 
 # Add icon if it exists
 icon_path = os.path.join(current_dir, f'icon{icon_extension}')
