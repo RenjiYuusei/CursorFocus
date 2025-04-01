@@ -11,6 +11,7 @@ CursorFocus is a tool that automatically analyzes software codebases to generate
 - **Modern Interface**: Intuitive and user-friendly command-line interface
 
 ## Installation
+[Install here](https://github.com/RenjiYuusei/CursorFocus/releases)
 
 ### Requirements
 

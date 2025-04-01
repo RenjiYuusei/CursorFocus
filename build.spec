@@ -48,9 +48,7 @@ if os.path.exists(examples_dir):
 
 # Add icon if it exists
 icon_path = os.path.join(current_dir, f'icon{icon_extension}')
-icon_param = []
-if os.path.exists(icon_path):
-    icon_param = [('icon', icon_path, 'ICON')]
+icon = icon_path if os.path.exists(icon_path) else None
 
 # List of hidden imports required by CLI
 hiddenimports = [
@@ -106,7 +104,7 @@ exe = EXE(
     a.scripts,
     a.binaries,
     a.datas,
-    *icon_param,
+    [],
     name=output_name,
     debug=False,
     bootloader_ignore_signals=False,
@@ -120,4 +118,5 @@ exe = EXE(
     target_arch=target_arch,  # Only specified when needed via environment variable
     codesign_identity=None,
     entitlements_file=None,
+    icon=icon,  # Add icon directly as a parameter
 ) 
