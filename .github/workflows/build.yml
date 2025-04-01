@@ -17,7 +17,7 @@ jobs:
   create-tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Get all tags
           
@@ -38,10 +38,10 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
@@ -70,10 +70,10 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
@@ -103,10 +103,10 @@ jobs:
     runs-on: ubuntu-22.04
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
@@ -135,79 +135,8 @@ jobs:
         name: CursorFocus_${{ env.VERSION }}_linux_x64
         path: dist/CursorFocus_${{ env.VERSION }}_linux_x64
 
-  build-linux-arm64:
-    needs: create-tag
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v2
-    
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-      with:
-        platforms: arm64
-    
-    - name: Set version
-      shell: bash
-      run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-    
-    - name: Build in ARM64 Docker container
-      run: |
-        docker run --rm --platform linux/arm64 -v ${{ github.workspace }}:/app -w /app arm64v8/python:3.9-slim bash -c "
-          apt-get update && apt-get install -y build-essential
-          pip install --upgrade pip
-          pip install pyinstaller
-          pip install -r requirements.txt
-          python -m PyInstaller build.spec
-          mv /app/dist/CursorFocus_${{ env.VERSION }}_linux /app/dist/CursorFocus_${{ env.VERSION }}_linux_arm64
-        "
-        echo "Contents of dist directory:"
-        ls -la dist/
-        
-    - name: Upload Linux ARM64 artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CursorFocus_${{ env.VERSION }}_linux_arm64
-        path: dist/CursorFocus_${{ env.VERSION }}_linux_arm64
-
-  build-macos-intel:
-    needs: create-tag
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.10'
-
-    - name: Set version
-      shell: bash
-      run: echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
-
-    - name: Install dependencies
-      run: |
-        arch -x86_64 pip3 install --upgrade pip
-        arch -x86_64 pip3 install pyinstaller
-        arch -x86_64 pip3 install -r requirements.txt
-
-    - name: Build MacOS Intel executable
-      env:
-        TARGET_ARCH: 'x86_64'
-        VERSION: ${{ env.VERSION }}
-      run: |
-        arch -x86_64 python3 -m PyInstaller build.spec
-        mv "dist/CursorFocus_${{ env.VERSION }}_mac" "dist/CursorFocus_${{ env.VERSION }}_mac_intel"
-        
-    - name: Upload MacOS Intel artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: CursorFocus_${{ env.VERSION }}_mac_intel
-        path: dist/CursorFocus_${{ env.VERSION }}_mac_intel
-
   create-release:
-    needs: [build-windows, build-macos-arm64, build-linux-x64, build-linux-arm64, build-macos-intel]
+    needs: [build-windows, build-macos-arm64, build-linux-x64]
     runs-on: ubuntu-22.04
     
     steps:
@@ -236,8 +165,6 @@ jobs:
             artifacts/CursorFocus_${{ env.VERSION }}_windows.exe/CursorFocus_${{ env.VERSION }}_windows.exe
             artifacts/CursorFocus_${{ env.VERSION }}_mac_arm64/CursorFocus_${{ env.VERSION }}_mac_arm64
             artifacts/CursorFocus_${{ env.VERSION }}_linux_x64/CursorFocus_${{ env.VERSION }}_linux_x64
-            artifacts/CursorFocus_${{ env.VERSION }}_linux_arm64/CursorFocus_${{ env.VERSION }}_linux_arm64
-            artifacts/CursorFocus_${{ env.VERSION }}_mac_intel/CursorFocus_${{ env.VERSION }}_mac_intel
           draft: false
           prerelease: false
         env:

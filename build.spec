@@ -1,54 +1,27 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
+import sys
 import platform
-from dotenv import load_dotenv
 
-# Load environment variables to get version
-load_dotenv()
-version = os.getenv('VERSION', '1.0.0')
-
-# Set output name based on system type
+# Determine platform-specific values
 system = platform.system().lower()
-if system == "windows":
-    os_type = "windows"
-    executable_extension = '.exe'
-    icon_extension = '.ico'
-elif system == "linux":
-    os_type = "linux"
-    executable_extension = ''
-    icon_extension = '.ico'
-else:  # Darwin (macOS)
-    os_type = "mac"
-    executable_extension = ''
-    icon_extension = '.icns'
+path_separator = ';' if system == 'windows' else ':'
+executable_extension = '.exe' if system == 'windows' else ''
+icon_extension = '.ico' if system == 'windows' else '.icns'
 
-output_name = f"CursorFocus_{version}_{os_type}{executable_extension}"
-
-# Get current directory
+# Get the current directory
 current_dir = os.getcwd()
 
 # Collect data files
 datas = []
-
-# Add config.json if exists
 config_path = os.path.join(current_dir, 'config.json')
 if os.path.exists(config_path):
-    datas.append((config_path, '.'))
+    datas.append((config_path, "."))
 
-# Add .env if exists
 env_path = os.path.join(current_dir, '.env')
 if os.path.exists(env_path):
-    datas.append((env_path, '.'))
-
-# Add examples directory if exists
-examples_dir = os.path.join(current_dir, 'examples')
-if os.path.exists(examples_dir):
-    datas.append((examples_dir, 'examples'))
-
-# Add icon if it exists
-icon_path = os.path.join(current_dir, f'icon{icon_extension}')
-icon = icon_path if os.path.exists(icon_path) else None
+    datas.append((env_path, "."))
 
 # List of hidden imports required by CLI
 hiddenimports = [
@@ -81,6 +54,25 @@ hiddenimports.extend([
     "shutil",
 ])
 
+# Determine executable name based on version and platform
+version = "1.0.0"  # Default version
+if os.path.exists(config_path):
+    try:
+        import json
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            version = config.get('version', version)
+    except Exception:
+        pass
+
+executable_name = f"CursorFocus_{version}_{system}{executable_extension}"
+
+# Add icon if it exists
+icon_path = os.path.join(current_dir, f'icon{icon_extension}')
+icon_param = []
+if os.path.exists(icon_path):
+    icon_param = [('icon', icon_path, 'ICON')]
+
 a = Analysis(
     ['cli.py'],
     pathex=[current_dir],
@@ -96,16 +88,13 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
-# Get target architecture from environment variable
-target_arch = os.environ.get('TARGET_ARCH', None)
-
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
     a.datas,
-    [],
-    name=output_name,
+    *icon_param,
+    name=executable_name,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -114,9 +103,8 @@ exe = EXE(
     runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
-    argv_emulation=True,  # No effect on non-Mac platforms
-    target_arch=target_arch,  # Only specified when needed via environment variable
+    argv_emulation=False,
+    target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=icon,  # Add icon directly as a parameter
 ) 
