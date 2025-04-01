@@ -38,6 +38,7 @@ hiddenimports = [
     "colorama",
     "rich",
     "tqdm",
+    "keyboard",
 ]
 
 # Add platform-specific hidden imports

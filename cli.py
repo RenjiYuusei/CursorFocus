@@ -630,6 +630,70 @@ def setup_api_key_menu():
     
     wait_for_key()
 
+def select_gemini_model_menu():
+    """Menu for selecting Gemini AI model."""
+    clear_screen()
+    console.print(create_title_panel("SELECT GEMINI MODEL"))
+    
+    # Check if API key is set
+    if not os.environ.get("GEMINI_API_KEY"):
+        error_message("API key is not set. Please setup the API key first.")
+        wait_for_key()
+        return
+    
+    # Get current model
+    current_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-pro-exp-03-25")
+    console.print(f"[blue]Current model:[/] [cyan]{current_model}[/]")
+    
+    # Fetch available models
+    info_message("Fetching available models...")
+    display_custom_progress("Fetching models", 100, 0.03)
+    
+    available_models = CursorFocusCore.fetch_gemini_models()
+    
+    if not available_models:
+        error_message("Failed to fetch models. Please check your API key.")
+        wait_for_key()
+        return
+    
+    # Display available models
+    console.print("\n[bold]Available models:[/]")
+    for i, model in enumerate(available_models, 1):
+        is_current = model == current_model
+        current_marker = "[green]✓[/] " if is_current else "  "
+        console.print(f"{current_marker}[cyan]{i}.[/] [white]{model}[/]")
+    
+    # Get model selection
+    selection = input_with_default("Select model number or enter custom model name")
+    
+    try:
+        # Check if selection is a number
+        if selection and selection.isdigit():
+            idx = int(selection) - 1
+            if 0 <= idx < len(available_models):
+                selected_model = available_models[idx]
+            else:
+                error_message("Invalid selection")
+                wait_for_key()
+                return
+        # If not a number and not empty, use as custom model name
+        elif selection:
+            selected_model = selection.strip()
+        else:
+            warning_message("No selection made")
+            wait_for_key()
+            return
+        
+        # Set the model
+        if CursorFocusCore.set_gemini_model(selected_model):
+            success_message(f"Model set to: {selected_model}")
+        else:
+            error_message("Failed to set model")
+    except Exception as e:
+        error_message(f"Error: {str(e)}")
+    
+    wait_for_key()
+
 def settings_menu():
     """Application settings menu."""
     clear_screen()
@@ -828,6 +892,10 @@ def main_menu():
         has_api_key = bool(os.environ.get("GEMINI_API_KEY", "").strip())
         api_status = ("Set", "green") if has_api_key else ("Not Set", "red")
         
+        # Get Gemini model
+        current_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-pro-exp-03-25")
+        model_name = current_model.replace("gemini-", "").replace("-exp-03-25", "")
+        
         # Get project count and version
         config = load_config()
         project_count = len(config.get('projects', [])) if config else 0
@@ -836,6 +904,7 @@ def main_menu():
         # Status info for the menu
         status = {
             "API Key": api_status,
+            "Gemini Model": model_name,
             "Projects": project_count,
             "Version": current_version
         }
@@ -856,6 +925,7 @@ def main_menu():
             
             "--- Configuration",
             ("9", "Setup Gemini API Key", "Configure Google Gemini AI integration"),
+            ("10", "Select Gemini model", "Choose Gemini AI model to use"),
             ("S", "Settings", "Configure application settings"),
             ("A", "About", "Information about CursorFocus"),
             ("Q", "Quit", "Exit the application")
@@ -882,9 +952,11 @@ def main_menu():
             check_updates_menu()
         elif choice == '9':
             setup_api_key_menu()
-        elif choice.lower() in ['s', '10']:
+        elif choice == '10':
+            select_gemini_model_menu()
+        elif choice.lower() in ['s', '11']:
             settings_menu()
-        elif choice.lower() in ['a', '11']:
+        elif choice.lower() in ['a', '12']:
             about_menu()
         elif choice.lower() in ['q', '0', 'quit', 'exit']:
             console.print("\n[bold green]👋 Thank you for using CursorFocus![/]")

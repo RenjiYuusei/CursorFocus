@@ -144,28 +144,30 @@ def main():
         format='%(levelname)s: %(message)s'
     )
 
-    # Check updates
-    print("\n🔄 Checking updates...")
-    updater = AutoUpdater()
-    update_info = updater.check_for_updates()
+    # # Check updates
+    # print("\n🔄 Checking updates...")
+    # updater = AutoUpdater()
+    # update_info = updater.check_for_updates()
     
-    if update_info:
-        print(f"📦 Update available: {update_info['message']}")
-        print(f"🕒 Date: {update_info['date']}")
-        print(f"👤 Author: {update_info['author']}")
-        try:
-            if input("Update now? (y/n): ").lower() == 'y':
-                print("⏳ Downloading...")
-                if updater.update(update_info):
-                    print("✅ Updated! Please restart")
-                    return
-                else:
-                    print("❌ Update failed")
-        except KeyboardInterrupt:
-            print("\n👋 Update canceled")
-            pass
-    else:
-        print("✓ Latest version")
+    # if update_info:
+    #     print(f"📦 Update available: {update_info['message']}")
+    #     print(f"🕒 Date: {update_info['date']}")
+    #     print(f"👤 Author: {update_info['author']}")
+    #     try:
+    #         if input("Update now? (y/n): ").lower() == 'y':
+    #             print("⏳ Downloading...")
+    #             if updater.update(update_info):
+    #                 print("✅ Updated! Please restart")
+    #                 return
+    #             else:
+    #                 print("❌ Update failed")
+    #     except KeyboardInterrupt:
+    #         print("\n👋 Update canceled")
+    #         pass
+    # else:
+    #     print("✓ Latest version")
+
+    print("\n✓ Automatic updates disabled")
 
     config = load_config()
     if not config:

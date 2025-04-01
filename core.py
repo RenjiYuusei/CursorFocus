@@ -275,6 +275,69 @@ class CursorFocusCore:
             return False
     
     @staticmethod
+    def fetch_gemini_models():
+        """
+        Fetch available Gemini models.
+        
+        Returns:
+            list: List of available Gemini models or None if error occurs
+        """
+        try:
+            import google.generativeai as genai
+            from dotenv import load_dotenv
+            
+            # Load environment variables
+            load_dotenv()
+            
+            # Get API key
+            api_key = os.environ.get("GEMINI_API_KEY")
+            if not api_key:
+                return None
+            
+            # Configure Gemini
+            genai.configure(api_key=api_key)
+            
+            # Get available models
+            models = genai.list_models()
+            
+            # Filter for Gemini models
+            gemini_models = [model.name for model in models if 'gemini' in model.name.lower()]
+            
+            return gemini_models
+        except Exception as e:
+            logging.error(f"Error fetching Gemini models: {e}")
+            return None
+    
+    @staticmethod
+    def set_gemini_model(model_name):
+        """
+        Set the Gemini model to use.
+        
+        Args:
+            model_name (str): Model name
+            
+        Returns:
+            bool: Success status
+        """
+        try:
+            from dotenv import set_key, load_dotenv
+            
+            # Save model name to .env file
+            env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+            if not os.path.exists(env_path):
+                with open(env_path, 'w') as f:
+                    f.write(f"GEMINI_MODEL={model_name}")
+            else:
+                set_key(env_path, "GEMINI_MODEL", model_name)
+            
+            # Reload environment variables
+            load_dotenv(override=True)
+            return True
+        except Exception as e:
+            logging.error(f"Error setting Gemini model: {e}")
+            return False
+    
+    @staticmethod
     def update_project_settings(project_index, name=None, path=None, update_interval=None, max_depth=None):
         """
         Update a project's settings.

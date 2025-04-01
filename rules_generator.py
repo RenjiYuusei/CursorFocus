@@ -28,8 +28,12 @@ class RulesGenerator:
                 raise ValueError("GEMINI_API_KEY is required")
 
             genai.configure(api_key=api_key)
+            
+            # Get model name from environment or use default
+            model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-pro-exp-03-25")
+            
             self.model = genai.GenerativeModel(
-                model_name="gemini-2.5-pro-exp-03-25",
+                model_name=model_name,
             )
             self.chat_session = self.model.start_chat(history=[])
             
