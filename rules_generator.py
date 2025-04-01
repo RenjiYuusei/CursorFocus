@@ -29,13 +29,7 @@ class RulesGenerator:
 
             genai.configure(api_key=api_key)
             self.model = genai.GenerativeModel(
-                model_name="gemini-2.0-flash-exp",
-                generation_config={
-                    "temperature": 0.7,
-                    "top_p": 0.95,
-                    "top_k": 40,
-                    "max_output_tokens": 8192,
-                }
+                model_name="gemini-2.5-pro-exp-03-25",
             )
             self.chat_session = self.model.start_chat(history=[])
             

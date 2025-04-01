@@ -63,6 +63,23 @@ def get_default_config():
         }
     }
 
+def save_config(config):
+    """Save configuration to config.json file.
+    
+    Args:
+        config (dict): The configuration dictionary to save
+    """
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(script_dir, 'config.json')
+        
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=4)
+        return True
+    except Exception as e:
+        print(f"Error saving config: {e}")
+        return False
+
 # Load configuration once at module level
 _config = load_config()
 
