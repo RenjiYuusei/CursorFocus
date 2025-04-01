@@ -72,7 +72,7 @@ if os.path.exists(config_path):
 if 'VERSION' in os.environ:
     version = os.environ['VERSION']
 
-executable_name = f"CursorFocuss_{version}_{system}{executable_extension}"
+executable_name = f"CursorFocus_{version}_{system}{executable_extension}"
 
 # Add icon if it exists
 icon_path = os.path.join(current_dir, f'icon{icon_extension}')
