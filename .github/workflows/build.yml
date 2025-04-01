@@ -6,7 +6,7 @@ on:
       version:
         description: 'Version number (e.g. 1.0.9)'
         required: true
-        default: '1.0.0'
+        default: '1.8.05'
 
 permissions:
   contents: write
@@ -17,7 +17,7 @@ jobs:
   create-tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 0  # Get all tags
           
@@ -38,12 +38,12 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v2
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
-        python-version: '3.10'
+        python-version: '3.x'
     
     - name: Set version
       shell: bash
@@ -70,12 +70,12 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v2
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
-        python-version: '3.10'
+        python-version: '3.x'
     
     - name: Set version
       shell: bash
@@ -90,7 +90,8 @@ jobs:
     - name: Build MacOS ARM executable
       run: |
         pyinstaller build.spec
-        mv "dist/CursorFocus_${{ env.VERSION }}_mac" "dist/CursorFocus_${{ env.VERSION }}_mac_arm64"
+        mv "dist/CursorFocus_${{ env.VERSION }}_mac" "dist/CursorFocus_${{ env.VERSION }}_mac_arm64" || echo "File already has correct name"
+        ls -la dist/
 
     - name: Upload MacOS ARM artifact
       uses: actions/upload-artifact@v4
@@ -103,12 +104,12 @@ jobs:
     runs-on: ubuntu-22.04
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v2
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
-        python-version: '3.10'
+        python-version: '3.x'
     
     - name: Set version
       shell: bash
@@ -125,7 +126,7 @@ jobs:
         VERSION: ${{ env.VERSION }}
       run: |
         pyinstaller build.spec
-        mv "dist/CursorFocus_${{ env.VERSION }}_linux" "dist/CursorFocus_${{ env.VERSION }}_linux_x64"
+        mv "dist/CursorFocus_${{ env.VERSION }}_linux" "dist/CursorFocus_${{ env.VERSION }}_linux_x64" || echo "File already has correct name"
         echo "Contents of dist directory:"
         ls -la dist/
         
@@ -134,6 +135,7 @@ jobs:
       with:
         name: CursorFocus_${{ env.VERSION }}_linux_x64
         path: dist/CursorFocus_${{ env.VERSION }}_linux_x64
+
 
   create-release:
     needs: [build-windows, build-macos-arm64, build-linux-x64]

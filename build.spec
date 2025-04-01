@@ -6,6 +6,9 @@ import platform
 
 # Determine platform-specific values
 system = platform.system().lower()
+# Use 'mac' instead of 'darwin' for macOS
+if system == 'darwin':
+    system = 'mac'
 path_separator = ';' if system == 'windows' else ':'
 executable_extension = '.exe' if system == 'windows' else ''
 icon_extension = '.ico' if system == 'windows' else '.icns'
@@ -42,7 +45,7 @@ if system == 'windows':
     hiddenimports.extend([
         "msvcrt",
     ])
-elif system == 'darwin':  # macOS
+elif system == 'mac':  # macOS
     hiddenimports.extend([
         "termios",
         "fcntl",
@@ -65,13 +68,17 @@ if os.path.exists(config_path):
     except Exception:
         pass
 
-executable_name = f"CursorFocus_{version}_{system}{executable_extension}"
+# Get version from environment variable if available (for GitHub Actions)
+if 'VERSION' in os.environ:
+    version = os.environ['VERSION']
+
+executable_name = f"CursorFocuss_{version}_{system}{executable_extension}"
 
 # Add icon if it exists
 icon_path = os.path.join(current_dir, f'icon{icon_extension}')
-icon_param = []
+icon = None
 if os.path.exists(icon_path):
-    icon_param = [('icon', icon_path, 'ICON')]
+    icon = icon_path
 
 a = Analysis(
     ['cli.py'],
@@ -93,7 +100,7 @@ exe = EXE(
     a.scripts,
     a.binaries,
     a.datas,
-    *icon_param,
+    [],  # Remove the icon_param unpacking
     name=executable_name,
     debug=False,
     bootloader_ignore_signals=False,
@@ -107,4 +114,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=icon,  # Add icon parameter directly
 ) 
