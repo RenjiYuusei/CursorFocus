@@ -293,13 +293,11 @@ class CursorFocusCore:
             # Reload environment variables
             load_dotenv(override=True)
             
-            # Verify the API key was set correctly
-            if os.environ.get("GEMINI_API_KEY") == api_key:
-                logging.info("API key successfully saved and loaded into environment")
-                return True
-            else:
-                logging.error("API key was saved but not properly loaded into environment")
-                return False
+            # Set environment variable directly for current session
+            os.environ["GEMINI_API_KEY"] = api_key
+            
+            logging.info("API key successfully saved")
+            return True
                 
         except IOError as e:
             logging.error(f"IO error saving API key: {str(e)}")
@@ -398,13 +396,11 @@ class CursorFocusCore:
             # Reload environment variables
             load_dotenv(override=True)
             
-            # Verify the model was set correctly
-            if os.environ.get("GEMINI_MODEL") == model_name:
-                logging.info("Model successfully saved and loaded into environment")
-                return True
-            else:
-                logging.error("Model was saved but not properly loaded into environment")
-                return False
+            # Set environment variable directly for current session
+            os.environ["GEMINI_MODEL"] = model_name
+            
+            logging.info("Model successfully saved and loaded")
+            return True
                 
         except IOError as e:
             logging.error(f"IO error setting Gemini model: {str(e)}")
