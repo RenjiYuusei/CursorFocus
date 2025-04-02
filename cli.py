@@ -23,6 +23,7 @@ from ui import (
 )
 from rich.panel import Panel
 from dotenv import load_dotenv
+from rich.table import Table
 
 # Load environment variables
 load_dotenv()
@@ -581,17 +582,7 @@ def check_updates_menu():
     update_info = CursorFocusCore.check_for_updates()
     
     if update_info:
-        # Display update information
-        console.print("\n[bold green]New version available![/]")
-        console.print(f"[bold]Version:[/] [cyan]{update_info['version']}[/]")
-        console.print(f"[bold]Released:[/] [cyan]{update_info['date']}[/]")
-        console.print(f"[bold]Author:[/] [cyan]{update_info['author']}[/]")
-        console.print(f"[bold]Asset:[/] [cyan]{update_info['asset_name']}[/]")
-        
-        if update_info.get('message'):
-            console.print("\n[bold]Release notes:[/]")
-            console.print(Panel(update_info['message'], border_style="cyan"))
-        
+        # Use display_update_info to handle the update process
         if display_update_info(update_info):
             display_custom_progress("Downloading update", 100, 0.05)
             
@@ -604,93 +595,6 @@ def check_updates_menu():
                 error_message("Update failed")
     else:
         success_message("You are using the latest version")
-    
-    wait_for_key()
-
-def setup_api_key_menu():
-    """Set up Gemini API Key."""
-    clear_screen()
-    console.print(create_title_panel("SETUP GEMINI API KEY"))
-    
-    current_key = os.environ.get("GEMINI_API_KEY", "")
-    if current_key:
-        masked_key = f"{current_key[:5]}...{current_key[-5:]}" if len(current_key) > 10 else "********"
-        console.print(f"[blue]Current key:[/] [magenta]{masked_key}[/]")
-        
-        if not confirm_action("Do you want to change the API key?"):
-            wait_for_key()
-            return
-    
-    api_key = input_with_default("Enter new Gemini API key (get key at https://makersuite.google.com/app/apikey)")
-    
-    if CursorFocusCore.setup_gemini_api_key(api_key):
-        success_message("Successfully saved API key")
-    else:
-        error_message("Failed to save API key")
-    
-    wait_for_key()
-
-def select_gemini_model_menu():
-    """Menu for selecting Gemini AI model."""
-    clear_screen()
-    console.print(create_title_panel("SELECT GEMINI MODEL"))
-    
-    # Check if API key is set
-    if not os.environ.get("GEMINI_API_KEY"):
-        error_message("API key is not set. Please setup the API key first.")
-        wait_for_key()
-        return
-    
-    # Get current model
-    current_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-pro-exp-03-25")
-    console.print(f"[blue]Current model:[/] [cyan]{current_model}[/]")
-    
-    # Fetch available models
-    info_message("Fetching available models...")
-    display_custom_progress("Fetching models", 100, 0.03)
-    
-    available_models = CursorFocusCore.fetch_gemini_models()
-    
-    if not available_models:
-        error_message("Failed to fetch models. Please check your API key.")
-        wait_for_key()
-        return
-    
-    # Display available models
-    console.print("\n[bold]Available models:[/]")
-    for i, model in enumerate(available_models, 1):
-        is_current = model == current_model
-        current_marker = "[green]✓[/] " if is_current else "  "
-        console.print(f"{current_marker}[cyan]{i}.[/] [white]{model}[/]")
-    
-    # Get model selection
-    selection = input_with_default("Select model number or enter custom model name")
-    
-    try:
-        # Check if selection is a number
-        if selection and selection.isdigit():
-            idx = int(selection) - 1
-            if 0 <= idx < len(available_models):
-                selected_model = available_models[idx]
-            else:
-                error_message("Invalid selection")
-                wait_for_key()
-                return
-        # If not a number and not empty, use as custom model name
-        elif selection:
-            selected_model = selection.strip()
-        else:
-            warning_message("No selection made")
-            wait_for_key()
-            return
-        
-        # Set the model
-        if CursorFocusCore.set_gemini_model(selected_model):
-            success_message(f"Model set to: {selected_model}")
-        else:
-            error_message("Failed to set model")
-    except Exception as e:
-        error_message(f"Error: {str(e)}")
     
     wait_for_key()
 
@@ -885,6 +789,164 @@ def about_menu():
     
     wait_for_key()
 
+def gemini_settings_menu():
+    """Unified menu for managing Gemini API key and model settings."""
+    clear_screen()
+    console.print(create_title_panel("GEMINI AI SETTINGS"))
+    
+    # Check current API key status
+    current_key = os.environ.get("GEMINI_API_KEY", "")
+    has_api_key = bool(current_key.strip())
+    
+    # Get current model
+    current_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-pro-exp-03-25")
+    
+    # Display current settings
+    api_status = Panel(
+        f"[bold]API Key Status:[/] [{'green' if has_api_key else 'red'}]{'✓ Configured' if has_api_key else '✗ Not Configured'}[/]\n"
+        f"[bold]Current Model:[/] [cyan]{current_model}[/]",
+        title="Current Settings",
+        border_style="blue",
+        padding=(1, 2)
+    )
+    console.print(api_status)
+    
+    # Display configuration options
+    options = [
+        ("1", "Configure API Key", "Set up or change your Gemini API key"),
+        ("2", "Select Gemini Model", "Choose which Gemini AI model to use"),
+        ("3", "Test Connection", "Verify your API key and model configuration"),
+        ("0", "Back to main menu", "Return to the main menu")
+    ]
+    
+    # Display options as a table
+    table = Table(show_header=False, box=None, padding=(0, 2), title="Options")
+    table.add_column("Number", style="cyan")
+    table.add_column("Option", style="white")
+    table.add_column("Description", style="dim")
+    
+    for number, text, description in options:
+        table.add_row(f"[bold]{number}[/]", text, description)
+    
+    console.print(table)
+    
+    # Get user choice
+    choice = input_with_default("Enter your choice (0-3)")
+    
+    if choice == '1':
+        # Configure API Key
+        if has_api_key:
+            masked_key = f"{current_key[:5]}...{current_key[-5:]}" if len(current_key) > 10 else "********"
+            console.print(f"\n[blue]Current key:[/] [magenta]{masked_key}[/]")
+            
+            if not confirm_action("Do you want to change the API key?"):
+                wait_for_key()
+                return
+        
+        # Show API key instructions
+        console.print(Panel(
+            "To get your API key:\n"
+            "1. Visit [link=https://makersuite.google.com/app/apikey]https://makersuite.google.com/app/apikey[/link]\n"
+            "2. Sign in with your Google account\n"
+            "3. Create a new API key or copy an existing one",
+            title="API Key Instructions",
+            border_style="green",
+            padding=(1, 2)
+        ))
+        
+        api_key = input_with_default("Enter Gemini API key")
+        
+        if api_key.strip():
+            if CursorFocusCore.setup_gemini_api_key(api_key):
+                success_message("API key has been saved successfully")
+                info_message("New API key will be used for future operations")
+            else:
+                error_message("Failed to save API key")
+        else:
+            error_message("Invalid API key")
+        
+    elif choice == '2':
+        # Select Gemini Model
+        if not has_api_key:
+            error_message("API key is not set. Please configure your API key first.")
+            wait_for_key()
+            return
+        
+        # Show fetching message and progress
+        info_message("Fetching available Gemini models...")
+        display_custom_progress("Connecting to Gemini API", 100, 0.02)
+        
+        available_models = CursorFocusCore.fetch_gemini_models()
+        
+        if not available_models:
+            error_message("Failed to fetch models. Please check your API key.")
+            wait_for_key()
+            return
+        
+        # Display available models in a table
+        model_table = Table(title="Available Gemini Models", show_lines=True)
+        model_table.add_column("#", style="cyan", justify="right")
+        model_table.add_column("Model Name", style="white")
+        model_table.add_column("Status", style="green")
+        
+        for i, model in enumerate(available_models, 1):
+            is_current = model == current_model
+            status = "[green]Current[/]" if is_current else ""
+            model_table.add_row(str(i), model, status)
+        
+        console.print(model_table)
+        
+        # Get model selection
+        selection = input_with_default("Select model number or enter custom model name")
+        
+        try:
+            # Check if selection is a number
+            if selection and selection.isdigit():
+                idx = int(selection) - 1
+                if 0 <= idx < len(available_models):
+                    selected_model = available_models[idx]
+                else:
+                    error_message("Invalid selection")
+                    wait_for_key()
+                    return
+            # If not a number and not empty, use as custom model name
+            elif selection:
+                selected_model = selection.strip()
+            else:
+                warning_message("No selection made")
+                wait_for_key()
+                return
+            
+            # Display progress during model configuration
+            display_custom_progress("Configuring model", 100, 0.01)
+            
+            # Set the model
+            if CursorFocusCore.set_gemini_model(selected_model):
+                success_message(f"Gemini model set to: {selected_model}")
+            else:
+                error_message("Failed to set model")
+        except Exception as e:
+            error_message(f"Error: {str(e)}")
+    
+    elif choice == '3':
+        # Test Connection
+        if not has_api_key:
+            error_message("API key is not set. Please configure your API key first.")
+            wait_for_key()
+            return
+        
+        # Show testing message and progress bar
+        info_message("Testing connection to Gemini AI...")
+        display_custom_progress("Testing API connection", 100, 0.02)
+        
+        # Check if we can fetch models (simple test)
+        if CursorFocusCore.fetch_gemini_models():
+            success_message("Connection successful! Your Gemini AI configuration is working.")
+        else:
+            error_message("Connection failed. Please check your API key and try again.")
+    
+    wait_for_key()
+
 def main_menu():
     """Display main menu and handle selection."""
     while True:
@@ -924,8 +986,7 @@ def main_menu():
             ("8", "Check for updates", "Check and install CursorFocus updates"),
             
             "--- Configuration",
-            ("9", "Setup Gemini API Key", "Configure Google Gemini AI integration"),
-            ("10", "Select Gemini model", "Choose Gemini AI model to use"),
+            ("9", "Gemini AI Settings", "Configure Gemini API key and model"),
             ("S", "Settings", "Configure application settings"),
             ("A", "About", "Information about CursorFocus"),
             ("Q", "Quit", "Exit the application")
@@ -951,12 +1012,10 @@ def main_menu():
         elif choice == '8':
             check_updates_menu()
         elif choice == '9':
-            setup_api_key_menu()
-        elif choice == '10':
-            select_gemini_model_menu()
-        elif choice.lower() in ['s', '11']:
+            gemini_settings_menu()
+        elif choice.lower() in ['s', '10']:
             settings_menu()
-        elif choice.lower() in ['a', '12']:
+        elif choice.lower() in ['a', '11']:
             about_menu()
         elif choice.lower() in ['q', '0', 'quit', 'exit']:
             console.print("\n[bold green]👋 Thank you for using CursorFocus![/]")

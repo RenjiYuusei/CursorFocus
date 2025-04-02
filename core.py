@@ -224,8 +224,19 @@ class CursorFocusCore:
         Returns:
             bool: Success status
         """
-        updater = AutoUpdater()
-        return updater.update(update_info)
+        try:
+            updater = AutoUpdater()
+            result = updater.update(update_info)
+            if not result:
+                # If update failed, get the backup path for possible manual recovery
+                backup_path = updater.get_backup_path()
+                logging.error(f"Update failed. Backup is available at: {backup_path}" if backup_path else "Update failed and no backup path is available.")
+            return result
+        except Exception as e:
+            import traceback
+            logging.error(f"Error during update: {str(e)}")
+            logging.debug(traceback.format_exc())
+            return False
     
     @staticmethod
     def configure_updater(max_retries=None, retry_delay=None, keep_backups=None):
@@ -256,22 +267,48 @@ class CursorFocusCore:
         """
         from dotenv import set_key, load_dotenv
         
-        if not api_key.strip():
+        # Validate API key input
+        if not api_key or not isinstance(api_key, str) or not api_key.strip():
+            logging.error("Invalid API key: Cannot be empty or non-string type")
             return False
         
+        # Normalize API key by removing whitespace
+        api_key = api_key.strip()
+        
         try:
-            # Save API key to .env file
+            # Get the path to the .env file
             env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+            
+            # Create or update the .env file
             if not os.path.exists(env_path):
-                with open(env_path, 'w') as f:
+                # Create new .env file if it doesn't exist
+                logging.info(f"Creating new .env file at {env_path}")
+                with open(env_path, 'w', encoding='utf-8') as f:
                     f.write(f"GEMINI_API_KEY={api_key}")
             else:
+                # Update existing .env file
+                logging.info("Updating existing .env file with new API key")
                 set_key(env_path, "GEMINI_API_KEY", api_key)
             
             # Reload environment variables
             load_dotenv(override=True)
-            return True
-        except Exception:
+            
+            # Verify the API key was set correctly
+            if os.environ.get("GEMINI_API_KEY") == api_key:
+                logging.info("API key successfully saved and loaded into environment")
+                return True
+            else:
+                logging.error("API key was saved but not properly loaded into environment")
+                return False
+                
+        except IOError as e:
+            logging.error(f"IO error saving API key: {str(e)}")
+            return False
+        except PermissionError as e:
+            logging.error(f"Permission error saving API key: {str(e)}")
+            return False
+        except Exception as e:
+            logging.error(f"Unexpected error saving API key: {str(e)}")
             return False
     
     @staticmethod
@@ -289,23 +326,39 @@ class CursorFocusCore:
             # Load environment variables
             load_dotenv()
             
-            # Get API key
+            # Get API key from environment variable
             api_key = os.environ.get("GEMINI_API_KEY")
-            if not api_key:
+            if not api_key or not api_key.strip():
+                logging.error("No valid API key found in environment variables")
                 return None
             
-            # Configure Gemini
+            # Configure Gemini API with the API key
             genai.configure(api_key=api_key)
             
-            # Get available models
-            models = genai.list_models()
+            try:
+                # Use standard API call without modifying internal client
+                models = genai.list_models()
+            except Exception as e:
+                logging.error(f"Error calling Gemini API: {str(e)}")
+                return None
             
-            # Filter for Gemini models
+            # Filter for Gemini models and sort by name
             gemini_models = [model.name for model in models if 'gemini' in model.name.lower()]
+            gemini_models.sort(key=lambda x: x.lower())
             
+            # Return empty list if no Gemini models were found
+            if not gemini_models:
+                logging.warning("No Gemini models found in available models")
+                return []
+                
+            logging.info(f"Successfully fetched {len(gemini_models)} Gemini models")
             return gemini_models
+            
+        except ImportError as e:
+            logging.error(f"Required package not installed: {str(e)}")
+            return None
         except Exception as e:
-            logging.error(f"Error fetching Gemini models: {e}")
+            logging.error(f"Error fetching Gemini models: {str(e)}")
             return None
     
     @staticmethod
@@ -322,19 +375,45 @@ class CursorFocusCore:
         try:
             from dotenv import set_key, load_dotenv
             
+            # Validate model name
+            if not model_name or not isinstance(model_name, str) or not model_name.strip():
+                logging.error("Invalid model name: Cannot be empty or non-string type")
+                return False
+                
+            # Normalize model name
+            model_name = model_name.strip()
+            
             # Save model name to .env file
             env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
             if not os.path.exists(env_path):
-                with open(env_path, 'w') as f:
+                # Create new .env file if it doesn't exist
+                logging.info(f"Creating new .env file at {env_path}")
+                with open(env_path, 'w', encoding='utf-8') as f:
                     f.write(f"GEMINI_MODEL={model_name}")
             else:
+                # Update existing .env file
+                logging.info(f"Setting Gemini model to: {model_name}")
                 set_key(env_path, "GEMINI_MODEL", model_name)
             
             # Reload environment variables
             load_dotenv(override=True)
-            return True
+            
+            # Verify the model was set correctly
+            if os.environ.get("GEMINI_MODEL") == model_name:
+                logging.info("Model successfully saved and loaded into environment")
+                return True
+            else:
+                logging.error("Model was saved but not properly loaded into environment")
+                return False
+                
+        except IOError as e:
+            logging.error(f"IO error setting Gemini model: {str(e)}")
+            return False
+        except PermissionError as e:
+            logging.error(f"Permission error setting Gemini model: {str(e)}")
+            return False
         except Exception as e:
-            logging.error(f"Error setting Gemini model: {e}")
+            logging.error(f"Error setting Gemini model: {str(e)}")
             return False
     
     @staticmethod

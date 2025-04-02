@@ -63,7 +63,18 @@ class AutoUpdater:
                 json.dump(config, f, indent=4)
             return True
         except Exception as e:
-            logging.error(f"Failed to save version: {e}")
+            logging.error(f"Failed to save version to config: {e}")
+            return False
+
+    def _update_version_file(self, version: str) -> bool:
+        """Update version in .version file."""
+        try:
+            version_file = os.path.join(os.path.dirname(__file__), '.version')
+            with open(version_file, 'w', encoding='utf-8') as f:
+                f.write(version)
+            return True
+        except Exception as e:
+            logging.error(f"Failed to update .version file: {e}")
             return False
 
     def _get_system_info(self) -> Dict[str, str]:
@@ -138,35 +149,43 @@ class AutoUpdater:
                 # Find matching asset for current system
                 system = self.system_info['system']
                 arch = self.system_info['arch']
-                asset_name = f"CursorFocus_{latest_version}_{system}_{arch}"
+                
+                # Base asset name pattern
+                asset_name_base = f"CursorFocus_{latest_version}_{system}"
                 
                 matching_asset = None
                 for asset in release_info['assets']:
-                    if asset['name'].startswith(asset_name):
+                    # For Windows, the file might be named without arch or with .exe extension
+                    if system == 'windows' and (asset['name'].startswith(asset_name_base) or 
+                                               asset['name'] == f"CursorFocus_{latest_version}_windows.exe"):
+                        matching_asset = asset
+                        break
+                    # For other platforms, match with architecture
+                    elif asset['name'].startswith(f"{asset_name_base}_{arch}"):
                         matching_asset = asset
                         break
                 
                 if not matching_asset:
-                    logging.warning(f"No matching asset found for {asset_name}")
+                    logging.warning(f"No matching asset found for {asset_name_base}")
                     return None
                 
-                    # Convert UTC time to local time
-                    utc_date = datetime.strptime(
+                # Convert UTC time to local time
+                utc_date = datetime.strptime(
                     release_info['published_at'], 
-                        "%Y-%m-%dT%H:%M:%SZ"
-                    )
-                    local_date = utc_date.replace(tzinfo=timezone.utc).astimezone(tz=None)
-                    formatted_date = local_date.strftime("%B %d, %Y at %I:%M %p")
-                    
-                    # Create update info dictionary
-                    return {
+                    "%Y-%m-%dT%H:%M:%SZ"
+                )
+                local_date = utc_date.replace(tzinfo=timezone.utc).astimezone(tz=None)
+                formatted_date = local_date.strftime("%B %d, %Y at %I:%M %p")
+                
+                # Create update info dictionary
+                return {
                     'version': latest_version,
                     'message': release_info['body'],
-                        'date': formatted_date,
+                    'date': formatted_date,
                     'author': release_info['author']['login'],
                     'download_url': matching_asset['browser_download_url'],
                     'asset_name': matching_asset['name']
-                    }
+                }
 
             except requests.exceptions.Timeout:
                 logging.warning(f"Timeout when checking for updates (Attempt {retries+1}/{self.max_retries})")
@@ -220,6 +239,46 @@ class AutoUpdater:
             logging.error(f"Failed to create backup: {e}")
             return False, ""
 
+    def _validate_zip_file(self, zip_path: str) -> bool:
+        """
+        Validate that the downloaded file is a proper zip file.
+        
+        Args:
+            zip_path (str): Path to the downloaded zip file
+            
+        Returns:
+            bool: True if file is a valid zip, False otherwise
+        """
+        try:
+            if not os.path.exists(zip_path):
+                logging.error("Zip file does not exist")
+                return False
+                
+            # For Windows, we might get an .exe file directly, so check the file extension
+            if platform.system().lower() == 'windows' and zip_path.lower().endswith('.exe'):
+                logging.info("Downloaded file is an .exe executable, validation skipped")
+                return True
+                
+            if not zipfile.is_zipfile(zip_path):
+                logging.error("File is not a valid zip file")
+                return False
+                
+            # Try opening the zip file to validate its contents
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                # Check that zip has contents
+                if len(zip_ref.namelist()) == 0:
+                    logging.error("Zip file is empty")
+                    return False
+                    
+                # Basic validation passed
+                return True
+        except zipfile.BadZipFile:
+            logging.error("Downloaded file is not a valid zip archive")
+            return False
+        except Exception as e:
+            logging.error(f"Error validating zip file: {e}")
+            return False
+
     def _restore_from_backup(self, backup_dir: str, dst_dir: str) -> bool:
         """
         Restore files from backup in case of update failure.
@@ -236,14 +295,32 @@ class AutoUpdater:
             return False
             
         try:
+            failed_files = []
+            
             for item in os.listdir(backup_dir):
                 src = os.path.join(backup_dir, item)
                 dst = os.path.join(dst_dir, item)
                 
-                if os.path.isfile(src):
-                    shutil.copy2(src, dst)
-                elif os.path.isdir(src):
-                    shutil.copytree(src, dst, dirs_exist_ok=True)
+                try:
+                    if os.path.isfile(src):
+                        shutil.copy2(src, dst)
+                    elif os.path.isdir(src):
+                        # Skip .git directory during restore if problems occur
+                        if item == '.git':
+                            try:
+                                shutil.copytree(src, dst, dirs_exist_ok=True)
+                            except Exception as git_error:
+                                logging.warning(f"Failed to restore .git directory: {git_error}")
+                                continue
+                        else:
+                            shutil.copytree(src, dst, dirs_exist_ok=True)
+                except Exception as copy_error:
+                    failed_files.append((src, dst, str(copy_error)))
+                    continue
+            
+            if failed_files:
+                logging.error(f"Failed to restore from backup: {failed_files}")
+                return False
             
             return True
         except Exception as e:
@@ -266,15 +343,65 @@ class AutoUpdater:
             
         try:
             logging.info(f"Removing backup directory at: {backup_dir}")
-            shutil.rmtree(backup_dir)
+            
+            # First attempt: try to handle .git directory separately on Windows
+            if platform.system().lower() == 'windows':
+                git_dir = os.path.join(backup_dir, '.git')
+                if os.path.exists(git_dir):
+                    logging.info("Handling .git directory separately on Windows")
+                    try:
+                        # Try removing read-only flags from .git directory
+                        for root, dirs, files in os.walk(git_dir):
+                            for file in files:
+                                try:
+                                    file_path = os.path.join(root, file)
+                                    os.chmod(file_path, 0o777)  # Grant all permissions
+                                except Exception:
+                                    pass
+                        
+                        # Use a more robust method to remove .git directory on Windows
+                        import subprocess
+                        subprocess.run(['rmdir', '/S', '/Q', git_dir], shell=True, check=False)
+                    except Exception as git_error:
+                        logging.warning(f"Failed to remove .git directory: {git_error}")
+                        # Continue with the rest of the cleanup even if .git removal fails
+            
+            # Second attempt: try removing the whole directory
+            try:
+                shutil.rmtree(backup_dir, ignore_errors=True)
+            except Exception as e:
+                logging.warning(f"Standard cleanup failed: {e}")
+                
+                # Final attempt: use OS-specific commands for stubborn directories
+                if platform.system().lower() == 'windows':
+                    try:
+                        import subprocess
+                        subprocess.run(['rmdir', '/S', '/Q', backup_dir], shell=True, check=False)
+                    except Exception as cmd_error:
+                        logging.warning(f"Command line cleanup failed: {cmd_error}")
+                else:
+                    try:
+                        import subprocess
+                        subprocess.run(['rm', '-rf', backup_dir], shell=True, check=False)
+                    except Exception as cmd_error:
+                        logging.warning(f"Command line cleanup failed: {cmd_error}")
             
             # Verify backup was actually removed
             if not os.path.exists(backup_dir):
                 logging.info("Backup directory successfully removed")
                 return True
             else:
-                logging.warning("Backup directory still exists after removal attempt")
-                return False
+                # If directory still exists but most content was removed, consider it a partial success
+                remaining_items = len(os.listdir(backup_dir))
+                if remaining_items == 0:
+                    logging.info("Backup directory appears empty but not removed")
+                    return True
+                elif remaining_items <= 5:  # If only a few items remain
+                    logging.warning(f"Backup directory partially removed ({remaining_items} items remain)")
+                    return True
+                else:
+                    logging.warning(f"Backup directory still exists after removal attempt with {remaining_items} items")
+                    return False
         except Exception as e:
             logging.warning(f"Failed to remove backup directory: {e}")
             logging.debug(traceback.format_exc())
@@ -322,8 +449,14 @@ class AutoUpdater:
         backup_dir = ""
         dst_dir = os.path.dirname(__file__)
         backup_created = False
+        is_exe_update = False
         
         try:
+            # Check if this is an .exe update for Windows
+            if platform.system().lower() == 'windows' and update_info['asset_name'].lower().endswith('.exe'):
+                is_exe_update = True
+                logging.info("Detected executable update for Windows")
+            
             # Create backup first
             backup_created, backup_dir = self._create_backup(dst_dir)
             if not backup_created:
@@ -334,32 +467,82 @@ class AutoUpdater:
             if not content:
                 raise Exception(f"Failed to download update after {self.max_retries} attempts")
 
-            # Save zip file temporarily
+            # Save file temporarily
             temp_dir = tempfile.mkdtemp()
-            zip_path = os.path.join(temp_dir, 'update.zip')
-            with open(zip_path, 'wb') as f:
-                f.write(content)
-
-            # Extract and update files
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                # Get root directory name in zip
-                root_dir = zip_ref.namelist()[0].split('/')[0]
-                zip_ref.extractall(temp_dir)
-
-                # Copy new files
-                src_dir = os.path.join(temp_dir, root_dir)
+            
+            # For .exe files, handle differently on Windows
+            if is_exe_update:
+                exe_path = os.path.join(temp_dir, update_info['asset_name'])
+                with open(exe_path, 'wb') as f:
+                    f.write(content)
                 
-                for item in os.listdir(src_dir):
-                    s = os.path.join(src_dir, item)
-                    d = os.path.join(dst_dir, item)
-                    if os.path.isfile(s):
-                        shutil.copy2(s, d)
-                    elif os.path.isdir(s):
-                        shutil.copytree(s, d, dirs_exist_ok=True)
+                # For executable updates, we simply need to copy the executable to the destination
+                dst_exe = os.path.join(dst_dir, update_info['asset_name'])
+                shutil.copy2(exe_path, dst_exe)
+                
+                # Give execution permissions
+                try:
+                    os.chmod(dst_exe, 0o755)  # rwxr-xr-x
+                except Exception as e:
+                    logging.warning(f"Failed to set executable permission: {e}")
+                
+                # Save new version to config file and .version file
+                version_saved = self._save_version(update_info['version'])
+                version_file_updated = self._update_version_file(update_info['version'])
+                
+                if not version_saved or not version_file_updated:
+                    logging.warning("Failed to update one or more version files")
+            else:
+                # Standard zip handling
+                zip_path = os.path.join(temp_dir, 'update.zip')
+                with open(zip_path, 'wb') as f:
+                    f.write(content)
 
-            # Save new version to config file
-            if not self._save_version(update_info['version']):
-                raise Exception("Failed to save new version")
+                # Validate the downloaded zip file
+                if not self._validate_zip_file(zip_path):
+                    raise Exception("File is not a valid file for update")
+
+                # Extract and update files
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    # Get root directory name in zip
+                    root_dir = None
+                    if len(zip_ref.namelist()) > 0:
+                        first_item = zip_ref.namelist()[0]
+                        # Handle both directory and file at root
+                        if '/' in first_item:
+                            root_dir = first_item.split('/')[0]
+                    
+                    zip_ref.extractall(temp_dir)
+
+                    # Copy new files
+                    src_dir = temp_dir
+                    if root_dir:
+                        src_dir = os.path.join(temp_dir, root_dir)
+                    
+                    # Check if source directory exists after extraction
+                    if not os.path.exists(src_dir):
+                        raise Exception(f"Extracted directory not found: {src_dir}")
+                    
+                    for item in os.listdir(src_dir):
+                        s = os.path.join(src_dir, item)
+                        d = os.path.join(dst_dir, item)
+                        
+                        # Skip .git directory during update
+                        if item == '.git':
+                            logging.info("Skipping .git directory during update")
+                            continue
+                            
+                        if os.path.isfile(s):
+                            shutil.copy2(s, d)
+                        elif os.path.isdir(s):
+                            shutil.copytree(s, d, dirs_exist_ok=True)
+
+                # Save new version to config file and .version file
+                version_saved = self._save_version(update_info['version'])
+                version_file_updated = self._update_version_file(update_info['version'])
+                
+                if not version_saved or not version_file_updated:
+                    logging.warning("Failed to update one or more version files")
 
             # Clean up temp directory
             if temp_dir and os.path.exists(temp_dir):

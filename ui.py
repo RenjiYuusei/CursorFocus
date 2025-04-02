@@ -8,10 +8,15 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn, TaskProgressColumn
 from rich.prompt import Prompt, Confirm
 from rich.layout import Layout
 from rich.live import Live
+from rich.markdown import Markdown
+from rich.style import Style as RichStyle
+from rich.align import Align
+from rich.columns import Columns
+from rich import box
 import keyboard
 
 # Initialize colorama
@@ -20,7 +25,53 @@ init(autoreset=True)
 # Rich console for improved output
 console = Console()
 
-# Define colors and styles for classic terminal output
+# Define theme colors for consistent UI
+class Theme:
+    """Modern theme colors and styles for the application."""
+    PRIMARY = "blue"
+    SECONDARY = "cyan"
+    SUCCESS = "green"
+    WARNING = "yellow"
+    ERROR = "red"
+    INFO = "bright_blue"
+    MUTED = "dim"
+    ACCENT = "magenta"
+    
+    # Compound styles
+    TITLE = f"bold {PRIMARY}"
+    SUBTITLE = f"bold {SECONDARY}"
+    HEADER = f"bold {PRIMARY}"
+    HIGHLIGHT = f"bold {ACCENT}"
+    
+    # Panel styles
+    PANEL_BORDER = PRIMARY
+    PANEL_TITLE = f"white on {PRIMARY}"
+    
+    # Table styles
+    TABLE_HEADER = f"bold {SECONDARY}"
+    TABLE_BORDER = SECONDARY
+    
+    # Component styles
+    BUTTON = f"bold {PRIMARY}"
+    LINK = f"underline {INFO}"
+    ICON_SUCCESS = "✓"
+    ICON_ERROR = "✗"
+    ICON_WARNING = "⚠"
+    ICON_INFO = "ℹ"
+    ICON_ARROW = "→"
+    ICON_BULLET = "•"
+    ICON_GEAR = "⚙"
+    ICON_STAR = "★"
+    ICON_FOLDER = "📁"
+    ICON_FILE = "📄"
+    ICON_CLOCK = "🕒"
+    ICON_SEARCH = "🔍"
+    ICON_KEY = "🔑"
+    ICON_NET = "🌐"
+    ICON_MONITOR = "📡"
+    ICON_LOCK = "🔒"
+
+# Legacy colors for backward compatibility
 class Colors:
     """Color and style definitions for the classic terminal interface."""
     TITLE = Fore.CYAN + Style.BRIGHT
@@ -51,106 +102,106 @@ def get_terminal_size():
 # ========== Modern UI Functions (using Rich) ==========
 
 def create_title_panel(title, subtitle=None):
-    """Create a stylish title panel."""
+    """Create a stylish title panel with modern design."""
     if subtitle:
-        content = f"[bold cyan]{title}[/]\n[white]{subtitle}[/]"
+        content = f"[{Theme.TITLE}]{title}[/]\n[white]{subtitle}[/]"
     else:
-        content = f"[bold cyan]{title}[/]"
+        content = f"[{Theme.TITLE}]{title}[/]"
     
     return Panel(
         content,
-        border_style="blue",
-        title="[white on blue] CursorFocus [/]",
+        border_style=Theme.PANEL_BORDER,
+        title=f"[{Theme.PANEL_TITLE}] CursorFocus [/]",
         title_align="center",
-        subtitle="[dim]AI-Powered Context Generator for Cursor IDE[/]",
+        subtitle=f"[{Theme.MUTED}]AI-Powered Context Generator for Cursor IDE[/]",
         subtitle_align="center",
-        padding=(1, 2)
+        padding=(1, 2),
+        box=box.ROUNDED
     )
 
 def display_menu(title, options, status=None):
-    """Display a beautiful menu with options."""
+    """Display a beautiful menu with options and status information."""
     clear_screen()
     
     console.print(create_title_panel(title))
     
     if status:
-        status_text = Text()
+        status_items = []
         for key, value in status.items():
-            status_text.append(f"{key}: ", style="bold cyan")
             if isinstance(value, tuple):
                 text, style = value
-                status_text.append(f"{text}", style=style)
+                status_items.append(f"[bold {Theme.SECONDARY}]{key}:[/] [{style}]{text}[/]")
             else:
-                status_text.append(f"{value}")
-            status_text.append(" | ")
+                status_items.append(f"[bold {Theme.SECONDARY}]{key}:[/] {value}")
         
-        console.print(Panel(status_text, border_style="dim", padding=(1, 2)))
+        status_text = Align.center(" | ".join(status_items))
+        console.print(Panel(status_text, border_style=Theme.MUTED, padding=(1, 2), box=box.ROUNDED))
     
     table = Table(show_header=False, box=None, padding=(0, 2))
-    table.add_column("Number", style="cyan")
+    table.add_column("Number", style=Theme.SECONDARY)
     table.add_column("Option", style="white")
-    table.add_column("Description", style="dim")
+    table.add_column("Description", style=Theme.MUTED)
     
     for option in options:
         if isinstance(option, str) and option.startswith("---"):
             # This is a category header
             category = option.replace("---", "").strip()
-            table.add_row("", f"[bold yellow]{category}[/]", "")
+            table.add_row("", f"[bold {Theme.ACCENT}]{category}[/]", "")
         else:
             number, text, description = option
-            table.add_row(f"[bold]{number}[/]", text, description)
+            table.add_row(f"[bold]{number}[/]", text, f"{Theme.ICON_ARROW} {description}")
     
     console.print(table)
     
-    return Prompt.ask("[bold green]Enter your choice[/]")
+    return Prompt.ask(f"[bold {Theme.SUCCESS}]Enter your choice[/]")
 
 def display_custom_progress(description="Processing", iterations=100, delay=0.01):
-    """Display a custom progress bar with spinner."""
+    """Display a modern progress bar with spinner and detailed statistics."""
     with Progress(
         SpinnerColumn(),
-        TextColumn("[bold blue]{task.description}"),
-        BarColumn(bar_width=40),
-        TextColumn("[bold cyan]{task.percentage:>3.0f}%"),
+        TextColumn(f"[bold {Theme.PRIMARY}]{{task.description}}"),
+        BarColumn(bar_width=40, complete_style=Theme.SUCCESS, finished_style=Theme.SUCCESS),
+        TaskProgressColumn(),
         TimeElapsedColumn(),
     ) as progress:
-        task = progress.add_task(f"[cyan]{description}", total=iterations)
+        task = progress.add_task(f"[{Theme.SECONDARY}]{description}", total=iterations)
         
         for _ in range(iterations):
             time.sleep(delay)
             progress.update(task, advance=1)
 
 def input_with_default(prompt, default=""):
-    """Get input with a default value."""
+    """Get input with a default value and improved styling."""
     result = Prompt.ask(
-        f"[bold green]{prompt}[/]", 
+        f"[bold {Theme.SUCCESS}]{prompt}[/]", 
         default=default,
         show_default=True if default else False
     )
     return result
 
 def confirm_action(question):
-    """Confirm an action with yes/no."""
-    return Confirm.ask(f"[bold yellow]{question}[/]")
+    """Confirm an action with yes/no prompt."""
+    return Confirm.ask(f"[bold {Theme.WARNING}]{question}[/]")
 
 def success_message(message):
-    """Display a success message."""
-    console.print(f"[bold green]✓ {message}[/]")
+    """Display a success message with icon."""
+    console.print(f"[bold {Theme.SUCCESS}]{Theme.ICON_SUCCESS} {message}[/]")
 
 def error_message(message):
-    """Display an error message."""
-    console.print(f"[bold red]❌ {message}[/]")
+    """Display an error message with icon."""
+    console.print(f"[bold {Theme.ERROR}]{Theme.ICON_ERROR} {message}[/]")
 
 def warning_message(message):
-    """Display a warning message."""
-    console.print(f"[bold yellow]⚠️ {message}[/]")
+    """Display a warning message with icon."""
+    console.print(f"[bold {Theme.WARNING}]{Theme.ICON_WARNING} {message}[/]")
 
 def info_message(message):
-    """Display an information message."""
-    console.print(f"[blue]ℹ️ {message}[/]")
+    """Display an information message with icon."""
+    console.print(f"[{Theme.INFO}]{Theme.ICON_INFO} {message}[/]")
 
 def wait_for_key():
     """Wait for user to press any key to continue."""
-    console.print("\n[bold green]Press Enter to continue...[/]")
+    console.print(f"\n[bold {Theme.SUCCESS}]Press Enter to continue...[/]")
     input()
 
 def get_input(prompt_text):
@@ -158,24 +209,31 @@ def get_input(prompt_text):
     return input_with_default(prompt_text)
 
 def display_project_list(projects, title="Project List"):
-    """Display a list of projects in a table format."""
+    """Display a list of projects in a modern table format."""
     console.print(create_title_panel(title))
     
     if not projects:
         warning_message("No projects configured")
         return
     
-    table = Table(title="Configured Projects", show_lines=True)
-    table.add_column("#", style="cyan", justify="right")
+    table = Table(
+        title=f"{Theme.ICON_FOLDER} Configured Projects",
+        show_lines=True,
+        box=box.ROUNDED,
+        title_style=f"bold {Theme.SECONDARY}",
+        border_style=Theme.SECONDARY
+    )
+    
+    table.add_column("#", style=Theme.SECONDARY, justify="right")
     table.add_column("Name", style="bold white")
-    table.add_column("Path", style="magenta")
-    table.add_column("Status", style="green")
-    table.add_column("Update Interval", style="blue")
-    table.add_column("Max Depth", style="blue")
+    table.add_column("Path", style=Theme.ACCENT)
+    table.add_column("Status", style=Theme.SUCCESS)
+    table.add_column("Update Interval", style=Theme.INFO)
+    table.add_column("Max Depth", style=Theme.INFO)
     
     for i, project in enumerate(projects, 1):
         path_exists = os.path.exists(project['project_path'])
-        status = "[green]Active[/]" if path_exists else "[red]Path not found[/]"
+        status = f"[{Theme.SUCCESS}]Active[/]" if path_exists else f"[{Theme.ERROR}]Path not found[/]"
         
         table.add_row(
             str(i),
@@ -187,10 +245,10 @@ def display_project_list(projects, title="Project List"):
         )
     
     console.print(table)
-    console.print(f"\n[blue]Total:[/] [bold]{len(projects)}[/] projects configured")
+    console.print(f"\n[{Theme.INFO}]Total:[/] [bold]{len(projects)}[/] projects configured")
 
 def display_monitoring_screen(project_count):
-    """Display a live monitoring screen."""
+    """Display a live monitoring screen with modern layout."""
     layout = Layout()
     layout.split(
         Layout(name="header", size=3),
@@ -200,28 +258,37 @@ def display_monitoring_screen(project_count):
     
     # Create header
     layout["header"].update(Panel(
-        "[bold cyan]CursorFocus Monitoring[/]",
-        border_style="blue",
+        f"[bold {Theme.PRIMARY}]{Theme.ICON_MONITOR} CursorFocus Monitoring[/]",
+        border_style=Theme.PANEL_BORDER,
+        box=box.ROUNDED,
         padding=(1, 2)
     ))
     
     # Create footer with instructions
     layout["footer"].update(Panel(
-        "[bold green]Press Ctrl+C to stop monitoring[/]",
-        border_style="green", 
+        f"[bold {Theme.SUCCESS}]Press Ctrl+C to stop monitoring[/]",
+        border_style=Theme.SUCCESS, 
+        box=box.ROUNDED,
         padding=(1, 0)
     ))
     
-    project_table = Table(title=f"Monitoring {project_count} Projects", show_lines=True)
+    project_table = Table(
+        title=f"{Theme.ICON_MONITOR} Monitoring {project_count} Projects",
+        show_lines=True,
+        box=box.ROUNDED,
+        title_style=f"bold {Theme.PRIMARY}",
+        border_style=Theme.SECONDARY
+    )
+    
     project_table.add_column("Project", style="bold white")
-    project_table.add_column("Status", style="green")
-    project_table.add_column("Last Update", style="blue")
-    project_table.add_column("Next Update", style="cyan")
+    project_table.add_column("Status", style=Theme.SUCCESS)
+    project_table.add_column("Last Update", style=Theme.INFO)
+    project_table.add_column("Next Update", style=Theme.SECONDARY)
     
     # Add sample projects row
     project_table.add_row(
         "Sample Project", 
-        "[green]Active[/]", 
+        f"[{Theme.SUCCESS}]Active[/]", 
         "Just now", 
         "In 60s"
     )
@@ -232,20 +299,27 @@ def display_monitoring_screen(project_count):
     return layout
 
 def display_scanning_results(found_projects):
-    """Display the results of scanning for projects."""
+    """Display the results of scanning for projects with modern styling."""
     if not found_projects:
         error_message("No projects found")
         return
     
-    console.print(f"\n[bold green]Found {len(found_projects)} projects:[/]")
+    console.print(f"\n[bold {Theme.SUCCESS}]{Theme.ICON_SEARCH} Found {len(found_projects)} projects:[/]")
     
-    table = Table(title="Detected Projects", show_lines=True)
-    table.add_column("#", style="cyan", justify="right")
+    table = Table(
+        title=f"{Theme.ICON_FOLDER} Detected Projects", 
+        show_lines=True,
+        box=box.ROUNDED,
+        title_style=f"bold {Theme.PRIMARY}",
+        border_style=Theme.SECONDARY
+    )
+    
+    table.add_column("#", style=Theme.SECONDARY, justify="right")
     table.add_column("Name", style="bold white")
-    table.add_column("Type", style="blue")
-    table.add_column("Path", style="magenta")
-    table.add_column("Language", style="green")
-    table.add_column("Framework", style="yellow")
+    table.add_column("Type", style=Theme.INFO)
+    table.add_column("Path", style=Theme.ACCENT)
+    table.add_column("Language", style=Theme.SUCCESS)
+    table.add_column("Framework", style=Theme.WARNING)
     
     for i, project in enumerate(found_projects, 1):
         table.add_row(
@@ -261,7 +335,7 @@ def display_scanning_results(found_projects):
 
 def display_update_info(update_info):
     """
-    Display information about an available update and options.
+    Display information about an available update with modern styling.
     
     Args:
         update_info (dict): Update information dictionary or None
@@ -273,14 +347,16 @@ def display_update_info(update_info):
         success_message("You are using the latest version")
         return False
     
+    # Display header information
     console.print(Panel(
-        f"[bold green]✨ New update available![/]\n\n"
-        f"[cyan]Content:[/] {update_info['message']}\n"
-        f"[cyan]Date:[/] {update_info['date']}\n"
-        f"[cyan]Author:[/] {update_info['author']}\n"
-        f"[cyan]SHA:[/] {update_info['sha'][:8]}",
+        f"[bold {Theme.SUCCESS}]{Theme.ICON_STAR} New update available![/]\n\n"
+        f"[{Theme.SECONDARY}]Version:[/] {update_info['version']}\n"
+        f"[{Theme.SECONDARY}]Date:[/] {update_info['date']}\n"
+        f"[{Theme.SECONDARY}]Author:[/] {update_info['author']}\n"
+        f"[{Theme.SECONDARY}]Asset:[/] {update_info['asset_name']}",
         title="Update Available",
-        border_style="green",
+        border_style=Theme.SUCCESS,
+        box=box.ROUNDED,
         padding=(1, 2)
     ))
     
@@ -291,6 +367,25 @@ def display_update_info(update_info):
             from core import CursorFocusCore
             CursorFocusCore.configure_updater(keep_backups=True)
             info_message("Backup will be kept after update")
+        else:
+            # Warn about potential backup cleanup issues
+            import platform
+            if platform.system().lower() == 'windows':
+                warning_message("Note: On Windows, backup cleanup may show warnings about .git directories")
+                info_message("These warnings are normal and won't affect functionality")
+        
+        # Display additional information about the update process
+        info_message("Starting update process - this may take a moment...")
+        info_message("The update will download and validate the package before applying it")
+        
+        # For Windows, show different message based on update type
+        import platform
+        if platform.system().lower() == 'windows':
+            if update_info['asset_name'].lower().endswith('.exe'):
+                info_message("Detected .exe update file - will install executable directly")
+            else:
+                info_message("Note: On Windows, updating may skip .git directories to avoid permission issues")
+            
         return True
     
     return False
