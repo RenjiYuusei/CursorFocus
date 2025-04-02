@@ -7,6 +7,7 @@ import logging
 from threading import Thread
 from datetime import datetime
 import shutil
+import platform
 
 # Import necessary modules from the project
 from config import load_config, get_default_config, save_config
@@ -227,6 +228,28 @@ class CursorFocusCore:
         try:
             updater = AutoUpdater()
             result = updater.update(update_info)
+            
+            # Check if this is a Windows .exe update and show additional info
+            if platform.system().lower() == 'windows' and update_info['asset_name'].lower().endswith('.exe'):
+                user_home = os.path.expanduser("~")
+                downloads_dir = os.path.join(user_home, "Downloads")
+                exe_path = os.path.join(downloads_dir, update_info['asset_name'])
+                
+                if os.path.exists(exe_path):
+                    logging.info(f"Update executable saved to: {exe_path}")
+                    
+                    # Check if running from executable
+                    if getattr(sys, 'frozen', False):
+                        logging.info("Running from frozen executable, cleanup will be handled automatically")
+                        # The cleanup is now handled by the batch script in AutoUpdater
+                        success_message = "Update successful! The application will restart automatically with the new version."
+                    else:
+                        # For non-frozen environments
+                        logging.info("Not running from executable, showing manual instruction")
+                        # This will be shown in terminal mode
+                        print(f"\nIMPORTANT: The updated executable has been downloaded to:\n{exe_path}")
+                        success_message = f"Update successful! The updated executable has been downloaded to:\n{exe_path}"
+            
             if not result:
                 # If update failed, get the backup path for possible manual recovery
                 backup_path = updater.get_backup_path()

@@ -11,6 +11,7 @@ import tempfile
 import zipfile
 import platform
 import re
+import sys
 
 def clear_console():
     """Clear console screen for different OS."""
@@ -450,8 +451,14 @@ class AutoUpdater:
         dst_dir = os.path.dirname(__file__)
         backup_created = False
         is_exe_update = False
+        current_exe_path = None
         
         try:
+            # Get current executable path if running from .exe
+            if platform.system().lower() == 'windows' and getattr(sys, 'frozen', False):
+                current_exe_path = sys.executable
+                logging.info(f"Current executable path: {current_exe_path}")
+            
             # Check if this is an .exe update for Windows
             if platform.system().lower() == 'windows' and update_info['asset_name'].lower().endswith('.exe'):
                 is_exe_update = True
@@ -476,15 +483,61 @@ class AutoUpdater:
                 with open(exe_path, 'wb') as f:
                     f.write(content)
                 
-                # For executable updates, we simply need to copy the executable to the destination
-                dst_exe = os.path.join(dst_dir, update_info['asset_name'])
+                # For executable updates, we need to copy to a user-accessible location
+                user_home = os.path.expanduser("~")
+                downloads_dir = os.path.join(user_home, "Downloads")
+                
+                # Create destination path - ensure it exists
+                if not os.path.exists(downloads_dir):
+                    try:
+                        os.makedirs(downloads_dir)
+                    except:
+                        downloads_dir = user_home  # Fallback to user home if downloads dir can't be created
+                
+                # Save executable to downloads folder
+                dst_exe = os.path.join(downloads_dir, update_info['asset_name'])
                 shutil.copy2(exe_path, dst_exe)
+                
+                # Log the destination path so user knows where to find it
+                logging.info(f"New executable saved to: {dst_exe}")
+                print(f"\nUpdate downloaded successfully!\nNew executable saved to: {dst_exe}")
                 
                 # Give execution permissions
                 try:
                     os.chmod(dst_exe, 0o755)  # rwxr-xr-x
                 except Exception as e:
                     logging.warning(f"Failed to set executable permission: {e}")
+
+                # Create batch script to launch new version and delete old version
+                if current_exe_path and os.path.exists(current_exe_path):
+                    # Create batch file for starting new exe and removing old one
+                    batch_file = os.path.join(downloads_dir, "update_and_clean.bat")
+                    with open(batch_file, 'w') as f:
+                        f.write('@echo off\n')
+                        f.write('echo Cleaning up old version and starting new version...\n')
+                        f.write(f'timeout /t 3 /nobreak > nul\n')  # Wait a bit for current process to exit
+                        f.write(f'start "" "{dst_exe}"\n')  # Start new version
+                        f.write(f'timeout /t 2 /nobreak > nul\n')  # Small delay
+                        f.write(f'if exist "{current_exe_path}" del "{current_exe_path}"\n')  # Delete old version
+                        f.write('exit\n')
+                    
+                    # Set executable permissions
+                    try:
+                        os.chmod(batch_file, 0o755)
+                    except Exception as e:
+                        logging.warning(f"Failed to set batch file permissions: {e}")
+                    
+                    # Start the batch file to handle cleanup after this process exits
+                    import subprocess
+                    subprocess.Popen(['start', 'cmd', '/c', batch_file], shell=True, close_fds=True)
+                    print(f"\nRestarting with new version...")
+                    
+                    # Signal that we will auto-restart
+                    logging.info("Auto-restart scheduled")
+                    print("The application will restart automatically with the new version...")
+                else:
+                    # If we can't get current executable path, suggest manual restart
+                    print(f"Please close this application and start the new version manually.")
                 
                 # Save new version to config file and .version file
                 version_saved = self._save_version(update_info['version'])

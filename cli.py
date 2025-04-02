@@ -126,6 +126,9 @@ def scan_for_projects_menu():
     # Request scan path
     scan_path = input_with_default("Enter path to scan", os.getcwd())
     
+    # Handle Windows paths by normalizing
+    scan_path = os.path.normpath(scan_path)
+    
     # Check if path exists
     if not os.path.exists(scan_path):
         error_message(f"Path does not exist: {scan_path}")

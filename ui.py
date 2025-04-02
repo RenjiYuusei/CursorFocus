@@ -36,6 +36,7 @@ class Theme:
     INFO = "bright_blue"
     MUTED = "dim"
     ACCENT = "magenta"
+    PROMPT = "green"
     
     # Compound styles
     TITLE = f"bold {PRIMARY}"
@@ -171,21 +172,27 @@ def display_custom_progress(description="Processing", iterations=100, delay=0.01
             progress.update(task, advance=1)
 
 def input_with_default(prompt, default=""):
-    """Get input with a default value and improved styling."""
-    result = Prompt.ask(
-        f"[bold {Theme.SUCCESS}]{prompt}[/]", 
-        default=default,
-        show_default=True if default else False
-    )
-    return result
+    """Display a rich input prompt with a default value."""
+    # Handle Windows backslashes in paths properly
+    if isinstance(default, str) and "\\" in default:
+        default = default.replace("\\", "\\\\")
+    
+    response = console.input(f"[{Theme.PROMPT}]{prompt}[/]" + 
+                           (f" ([{Theme.ACCENT}]{default}[/])" if default else "") + 
+                           ": ")
+    return response.strip() or default
 
 def confirm_action(question):
     """Confirm an action with yes/no prompt."""
     return Confirm.ask(f"[bold {Theme.WARNING}]{question}[/]")
 
 def success_message(message):
-    """Display a success message with icon."""
-    console.print(f"[bold {Theme.SUCCESS}]{Theme.ICON_SUCCESS} {message}[/]")
+    """Display a success message."""
+    if "\n" in message:
+        for line in message.split("\n"):
+            console.print(f"[bold {Theme.SUCCESS}]{Theme.ICON_SUCCESS} {line.strip()}[/]")
+    else:
+        console.print(f"[bold {Theme.SUCCESS}]{Theme.ICON_SUCCESS} {message}[/]")
 
 def error_message(message):
     """Display an error message with icon."""
@@ -324,11 +331,11 @@ def display_scanning_results(found_projects):
     for i, project in enumerate(found_projects, 1):
         table.add_row(
             str(i),
-            project['name'],
-            project.get('type', ''),
-            project['path'],
-            project.get('language', ''),
-            project.get('framework', '')
+            str(project['name']),
+            str(project.get('type', '')),
+            str(project['path']),
+            str(project.get('language', '')),
+            str(project.get('framework', ''))
         )
     
     console.print(table)
